@@ -45,8 +45,7 @@ async function runNode(options = {}) {
     if (options.port) {
       config.config.p2p = config.config.p2p || {};
       config.config.p2p.port = options.port;
-      config.config.api = config.config.api || {};
-      config.config.api.port = options.port + 1000;
+
     }
 
     if (options.dataDir) {
@@ -74,7 +73,7 @@ async function runNode(options = {}) {
 
     logger.info(`Nodo avviato con successo con ID: ${node.nodeId}`);
     logger.info(`Porta P2P: ${config.config.p2p.port}`);
-    logger.info(`Porta API: ${config.config.api.port}`);
+
 
     // Mantieni il processo in esecuzione
     process.stdin.resume();

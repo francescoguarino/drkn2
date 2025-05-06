@@ -41,7 +41,6 @@ export class Node extends EventEmitter {
         {
           nodeId: this.config.node?.id,
           p2pPort: this.config.p2p?.port,
-          apiPort: this.config.api?.port,
           mining: this.config.mining,
           blockchain: this.config.blockchain
         },
@@ -73,7 +72,6 @@ export class Node extends EventEmitter {
         this.blockchain
       );
       this.eventEmitter = new BlockchainEventEmitter();
-      this.apiServer = new APIServer(this.config, this);
       this.isRunning = false;
 
       this._setupEventHandlers();
@@ -206,11 +204,7 @@ export class Node extends EventEmitter {
           this.config.p2p.port = savedInfo.p2pPort;
         }
 
-        if (savedInfo.apiPort) {
-          this.logger.info(`Usando porta API salvata: ${savedInfo.apiPort}`);
-          if (!this.config.api) this.config.api = {};
-          this.config.api.port = savedInfo.apiPort;
-        }
+        
 
         this.createdAt = new Date(savedInfo.createdAt);
         this.lastUpdated = new Date(savedInfo.lastUpdated);
@@ -270,17 +264,7 @@ export class Node extends EventEmitter {
       // Inizializza il sync manager
       await this.syncManager.start();
 
-      // Avvia il server API
-      if (this.config.api?.enabled !== false) {
-        await this.apiServer.start();
 
-        // Salva la porta API nelle informazioni del nodo
-        if (this.config.api?.port) {
-          await this.storage.saveNodeInfo({
-            apiPort: this.config.api.port
-          });
-        }
-      }
 
       // Salva le informazioni del nodo
       const nodeInfo = {
@@ -291,7 +275,6 @@ export class Node extends EventEmitter {
         lastUpdated: new Date().toISOString(),
         network: this.config.node.network,
         p2pPort: this.config.p2p.port,
-        apiPort: this.config.api.port,
         mining: {
           enabled: this.config.mining.enabled,
           maxWorkers: this.config.mining.maxWorkers,
@@ -311,10 +294,7 @@ export class Node extends EventEmitter {
     try {
       this.logger.info('Arresto del nodo Drakon...');
 
-      // Ferma il server API
-      if (this.apiServer && this.config.api?.enabled !== false) {
-        await this.apiServer.stop();
-      }
+
 
       // Ferma il miner
       if (this.miner && this.miner.isMining) {
