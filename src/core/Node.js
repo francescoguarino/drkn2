@@ -10,7 +10,6 @@ import { GossipManager } from '../consensus/GossipManager.js';
 import { Mempool } from '../consensus/Mempool.js';
 import { BlockchainDB } from '../storage/BlockchainDB.js';
 import { BlockchainEventEmitter } from '../utils/BlockchainEventEmitter.js';
-import { APIServer } from '../api/server.js';
 import { NodeStorage } from '../utils/NodeStorage.js';
 import crypto from 'crypto';
 import path from 'path';
@@ -263,6 +262,8 @@ export class Node extends EventEmitter {
 
       // Inizializza il sync manager
       await this.syncManager.start();
+
+     
 
 
 
