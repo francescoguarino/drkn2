@@ -37,14 +37,6 @@ const DEFAULT_CONFIG = {
       interval: 60000
     }
   },
-  api: {
-    enabled: true,
-    port: 7001,
-    host: '0.0.0.0',
-    cors: {
-      origin: '*'
-    }
-  },
   storage: {
     path: path.join(os.homedir(), '.drakon-node', 'data'),
     maxSize: 1024 * 1024 * 100, // 100MB
@@ -93,13 +85,7 @@ export class Config {
   }
 
   _applyEnvironmentVariables() {
-    // API
-    if (process.env.API_PORT) {
-      this.config.api.port = parseInt(process.env.API_PORT);
-    }
-    if (process.env.API_HOST) {
-      this.config.api.host = process.env.API_HOST;
-    }
+
 
     // P2P
     if (process.env.P2P_PORT) {
@@ -115,23 +101,6 @@ export class Config {
     // Mining
     if (process.env.MINING_ENABLED) {
       this.config.mining.enabled = process.env.MINING_ENABLED === 'true';
-    }
-
-    // Bootstrap nodes
-    if (process.env.BOOTSTRAP_NODES) {
-      try {
-        const bootstrapNodes = JSON.parse(process.env.BOOTSTRAP_NODES);
-        if (Array.isArray(bootstrapNodes)) {
-          this.config.p2p.bootstrapNodes = bootstrapNodes;
-        }
-      } catch (error) {
-        console.error('Errore nel parsing dei bootstrap nodes:', error.message);
-      }
-    }
-
-    // Nodo bootstrap
-    if (process.env.IS_BOOTSTRAP) {
-      this.config.node.isBootstrap = process.env.IS_BOOTSTRAP === 'true';
     }
   }
 
