@@ -46,7 +46,7 @@ export class Node extends EventEmitter {
         null,
         2
       )
-    );
+    )
 
     try {
       this.networkManager = new NetworkManager(this.config, this.storage);
@@ -189,6 +189,9 @@ export class Node extends EventEmitter {
       // Carica le informazioni esistenti
       const savedInfo = await this.storage.loadNodeInfo();
 
+      const peerId = await this.loadOrCreatePeerId();
+      this.config.peerId = peerId;
+
       if (savedInfo && savedInfo.nodeId) {
         this.logger.info(`Caricate informazioni del nodo esistenti con ID: ${savedInfo.nodeId}`);
         // Usa le informazioni salvate
@@ -228,6 +231,10 @@ export class Node extends EventEmitter {
           this.nodeId = crypto.randomBytes(16).toString('hex');
           this.config.node.id = this.nodeId; // Assicurati che l'ID sia coerente in tutta la configurazione
         }
+
+
+        this.logger.info(` PeerId : ${this.config.peerId.toString()}`);
+
 
         this.createdAt = new Date();
         this.lastUpdated = new Date();
@@ -381,75 +388,81 @@ export class Node extends EventEmitter {
     });
   }
 
-  // Metodi per l'API
-  async getNetworkStats() {
-    try {
-      return {
-        peers: this.peerManager ? this.peerManager.getPeers() : [],
-        connections: this.networkManager ? this.networkManager.getConnections() : 0,
-        uptime: this._getUptime()
-      };
-    } catch (error) {
-      this.logger.error('Errore nel recupero delle statistiche di rete:', error);
-      return {
-        peers: [],
-        connections: 0,
-        uptime: this._getUptime(),
-        error: error.message
-      };
+    async loadOrCreatePeerId() {
+      try {
+        // Carica le informazioni esistenti
+        const nodeInfo = await this.storage.loadNodeInfo();
+        this.logger.info('Informazioni nodo caricate: ' + JSON.stringify({
+          hasNodeInfo: !!nodeInfo,
+          nodeId: nodeInfo?.nodeId || 'non presente',
+          hasPeerId: !!nodeInfo?.peerId,
+          peerIdType: nodeInfo?.peerId ? typeof nodeInfo.peerId : 'non presente'
+        }));
+  
+        // Se abbiamo informazioni salvate con un PeerId, proviamo a usarle
+        if (nodeInfo && nodeInfo.peerId) {
+          this.logger.info('Trovato PeerId salvato, tentativo di riutilizzo...');
+  
+          try {
+            // Verifichiamo che abbiamo la chiave privata
+            if (typeof nodeInfo.peerId === 'object' && nodeInfo.peerId.privKey) {
+              this.logger.info('Chiavi private trovate, tentativo di ricostruzione PeerId...');
+              
+              try {
+                // Converti la chiave da base64 a buffer
+                const privKeyStr = nodeInfo.peerId.privKey;
+                const privKeyBuffer = Buffer.from(privKeyStr, 'base64');
+                
+                this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
+                
+                // Decodifica la chiave privata e crea il PeerId
+                const privKey = await unmarshalPrivateKey(privKeyBuffer);
+                const peerId = await createFromPrivKey(privKey);
+                
+                this.logger.info(`PeerId creato con successo: ${peerId.toString()}`);
+                
+                // Verifica corrispondenza con l'ID salvato
+                if (peerId.toString() !== nodeInfo.peerId.id) {
+                  this.logger.warn(`⚠️ Il PeerId generato (${peerId.toString()}) non corrisponde all'ID salvato (${nodeInfo.peerId.id})`);
+                  this.logger.warn('Questo potrebbe essere causato da cambiamenti nelle librerie libp2p. Utilizzerò comunque il nuovo PeerId generato.');
+                  // Aggiorna l'ID nel nodeInfo per i futuri caricamenti
+                  nodeInfo.peerId.id = peerId.toString();
+                  await this.storage.saveNodeInfo(nodeInfo);
+                  this.logger.info(`Informazioni nodo aggiornate con il nuovo PeerId: ${peerId.toString()}`);
+                }
+  
+                return peerId;
+              } catch (importError) {
+                this.logger.error(`Errore importazione chiave: ${importError.message}`);
+                throw importError;
+              }
+            } else if (typeof nodeInfo.peerId === 'string') {
+              // Qui abbiamo solo l'ID come stringa, senza chiavi
+              this.logger.warn('Solo ID PeerId trovato senza chiavi private, impossibile riutilizzare lo stesso PeerId');
+              throw new Error('PeerId senza chiavi private non utilizzabile');
+            } else {
+              this.logger.warn('Formato PeerId salvato non riconoscibile');
+              throw new Error('Formato PeerId non valido');
+            }
+          } catch (error) {
+            this.logger.error(`Errore nel caricamento del PeerId: ${error.message}`);
+            this.logger.info('Sarà generato un nuovo PeerId');
+            // Fallback a creazione nuovo PeerId
+            return await createNewPeerId();
+          }
+        } else {
+          // Nessun PeerId trovato, ne creiamo uno nuovo
+          this.logger.info('Nessun PeerId trovato, creazione nuovo PeerId');
+          return await createNewPeerId();
+        }
+      } catch (error) {
+        this.logger.error(`Errore generale in loadOrCreatePeerId: ${error.message}`);
+        // Fallback finale: crea un nuovo PeerId
+        return await createNewPeerId();
+      }
     }
-  }
+  
 
-  async getBlockchainStatus() {
-    try {
-      return {
-        height: this.blockchain ? this.blockchain.getHeight() : 0,
-        hash: this.blockchain ? this.blockchain.getLatestBlockHash() : null,
-        difficulty: this.blockchain
-          ? this.blockchain.getDifficulty()
-          : this.config.blockchain.difficulty,
-        mempoolSize: this.mempool ? this.mempool.getSize() : 0
-      };
-    } catch (error) {
-      this.logger.error('Errore nel recupero dello stato della blockchain:', error);
-      return {
-        height: 0,
-        hash: null,
-        difficulty: this.config.blockchain.difficulty,
-        mempoolSize: 0,
-        error: error.message
-      };
-    }
-  }
-
-  async getWalletBalance(address) {
-    try {
-      return this.wallet ? await this.wallet.getBalance(address) : 0;
-    } catch (error) {
-      this.logger.error(`Errore nel recupero del saldo per l'indirizzo ${address}:`, error);
-      return 0;
-    }
-  }
-
-  async createTransaction(to, amount) {
-    try {
-      return this.wallet ? await this.wallet.createTransaction(to, amount) : null;
-    } catch (error) {
-      this.logger.error('Errore nella creazione della transazione:', error);
-      throw error;
-    }
-  }
-
-  async broadcastTransaction(transaction) {
-    try {
-      return this.gossipManager
-        ? await this.gossipManager.broadcastTransaction(transaction)
-        : false;
-    } catch (error) {
-      this.logger.error('Errore nella diffusione della transazione:', error);
-      return false;
-    }
-  }
 
   _getUptime() {
     return process.uptime();
