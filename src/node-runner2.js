@@ -1,4 +1,4 @@
-import { Node } from './core/Node.js';
+import { Node } from './core/Node1.js';
 import { Logger } from './utils/logger.js';
 import { Config } from './config/config.js';
 import path from 'path';
@@ -15,7 +15,7 @@ const logger = new Logger('NodeRunner2');
  */
 async function runNode(options = {}) {
   try {
-    logger.info('Inizializzazione nodo Drakon (non bootstrap)...');
+    logger.info('Inizializzazione nodo Drakon ...');
 
     // Crea la configurazione di base
     const config = new Config();
@@ -25,21 +25,37 @@ async function runNode(options = {}) {
     const nodeStorage = new NodeStorage(config.config);
     const savedInfo = await nodeStorage.loadNodeInfo();
 
-    if (savedInfo && savedInfo.nodeId) {
-      logger.info(`Trovate informazioni salvate con ID: ${savedInfo.nodeId}`);
-      config.config.node = config.config.node || {};
-      config.config.node.id = savedInfo.nodeId;
-    } else {
-      logger.info('Nessuna informazione salvata trovata, generazione di un nuovo ID...');
-      const nodeId = generateNodeId();
-      config.config.node = config.config.node || {};
-      config.config.node.id = nodeId;
-      await nodeStorage.saveNodeInfo({ nodeId });
-      logger.info(`Nuovo ID generato e salvato: ${nodeId}`);
+    if(savedInfo ){
+      logger.info('INFORMAZIONI NODO ESISTENTI')
+      if(savedInfo.nodeId){
+        logger.info(`ID nodo esistente: ${savedInfo.nodeId}`);
+        if(savedInfo.peerId){
+          if (typeof savedInfo.peerId == 'object' &&  savedInfo.peerId.id.privKey && savedInfo.peerId.id.pubKey) {
+            logger.info(`PeerId esistente: ${savedInfo.peerId.id}`);
+            logger.info(`Chiave privata esistente: ${savedInfo.peerId.id.privKey}`);
+            logger.info(`Chiave pubblica esistente: ${savedInfo.peerId.id.pubKey}`);
+            config.config.peerId = savedInfo.peerId;
+          }else          
+          logger.info(`PeerId esistente: ${savedInfo.peerId}`);
+        }else{
+          logger.info(`PeerId esistente SENZA CHIAVI : ${savedInfo.peerId.id}`);
+        }
+      } 
     }
+    // if (savedInfo && savedInfo.nodeId) {
+    //   logger.info(`Trovate informazioni salvate con ID: ${savedInfo.nodeId}`);
+    //   config.config.node = config.config.node || {};
+    //   config.config.node.id = savedInfo.nodeId;
+    // } else {
+    //   logger.info('Nessuna informazione salvata trovata, generazione di un nuovo ID...');
+    //   const nodeId = generateNodeId();
+    //   config.config.node = config.config.node || {};
+    //   config.config.node.id = nodeId;
+    //   await nodeStorage.saveNodeInfo({ nodeId });
+    //   logger.info(`Nuovo ID generato e salvato: ${nodeId}`);
+    // }
 
-    // Configura il nodo come non bootstrap
-    config.config.node.isBootstrap = false;
+
 
     // Imposta altre configurazioni da opzioni
     if (options.port) {
@@ -47,13 +63,11 @@ async function runNode(options = {}) {
       config.config.p2p.port = options.port;
 
     }
-
     if (options.dataDir) {
       config.config.storage = config.config.storage || {};
       config.config.storage.path = options.dataDir;
     }
 
-    // Crea le directory necessarie
     await ensureDirectories(config.config);
 
     // Mostra il banner
@@ -86,7 +100,8 @@ async function runNode(options = {}) {
     }
     process.exit(1);
   }
-}
+  }
+
 
 /**
  * Genera un ID univoco per il nodo.
@@ -141,6 +156,7 @@ function setupCleanShutdown(node) {
   process.on('SIGINT', async () => {
     logger.info('Ricevuto segnale di interruzione, arresto del nodo...');
     await node.stop();
+    process.stdin.pause();
     logger.info('Nodo arrestato con successo');
     process.exit(0);
   });
@@ -148,6 +164,7 @@ function setupCleanShutdown(node) {
   process.on('SIGTERM', async () => {
     logger.info('Ricevuto segnale di terminazione, arresto del nodo...');
     await node.stop();
+    process.stdin.pause();
     logger.info('Nodo arrestato con successo');
     process.exit(0);
   });
@@ -156,6 +173,7 @@ function setupCleanShutdown(node) {
     logger.error('Eccezione non catturata:', error);
     try {
       await node.stop();
+      process.stdin.pause();
       logger.info("Nodo arrestato a causa di un'eccezione non catturata");
     } catch (stopError) {
       logger.error("Errore durante l'arresto del nodo:", stopError);

@@ -21,12 +21,7 @@ async function startNode(nodeId, port) {
     },
     p2p: {
       ...config.p2p,
-      port: port,
-      bootstrapNodes: [{ host: '127.0.0.1', port: 6001 }]
-    },
-    api: {
-      ...config.api,
-      port: port + 1000
+      port: port
     },
     mining: {
       enabled: true,
@@ -97,20 +92,13 @@ async function startNetwork() {
 
   const nodes = [];
 
+  logger.info('Avvio dei nodi Drakon...');
+
   try {
-    // Avvia il primo nodo (bootstrap)
-    logger.info('Avvio del nodo bootstrap...');
-    const bootstrapNode = await startNode('bootstrap-node', 6001);
-    nodes.push(bootstrapNode);
-    logger.info('Nodo bootstrap in esecuzione');
-
-    // Attendi un po' prima di avviare gli altri nodi
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Avvia altri nodi
-    for (let i = 1; i <= 2; i++) {
+    // Avvia i nodi
+    for (let i = 1; i <= 3; i++) {
       logger.info(`Avvio del nodo ${i}...`);
-      const node = await startNode(`node-${i}`, 6001 + i);
+      const node = await startNode(`node-${i}`, 6000 + i);
       nodes.push(node);
       logger.info(`Nodo ${i} in esecuzione`);
 

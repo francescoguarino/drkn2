@@ -1,7 +1,6 @@
 // IMPORTANTE: Questo file usa una versione fissata di undici (5.28.4) per evitare l'errore 'Cannot read properties of undefined (reading 'close')'
 // Questo errore è causato da un bug noto in libp2p o nelle sue dipendenze e verrà risolto in versioni future.
 
-import { BootstrapNode } from './core/BootstrapNode.js';
 import { Logger } from './utils/logger.js';
 import { Config } from './config/config.js';
 import path from 'path';
@@ -10,7 +9,6 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import { displayBootstrapBanner } from './utils/banner.js';
 import { NodeStorage } from './utils/NodeStorage.js';
-import { addBootstrapNode } from './config/bootstrap-nodes.js';
 import { exec } from 'child_process';
 import undici from 'undici';
 
@@ -19,7 +17,7 @@ const logger = new Logger('BootstrapRunner');
 logger.info(`Versione di undici: ${undici.VERSION || 'sconosciuta'}`);
 
 // Inizializzazione logger
-logger.info('Inizializzazione nodo bootstrap Drakon ENTER...');
+logger.info('Inizializzazione nodo Drakon...');
 
 /**
  * Avvia un nodo bootstrap Drakon, che serve come punto di ingresso nella rete.
@@ -134,12 +132,6 @@ async function runBootstrapNode(options = {}) {
     // Mostra il banner specifico per nodo ENTER
     displayBootstrapBanner(config.config);
 
-    // MODIFICATO: Usa la nuova classe BootstrapNode invece di Node
-    const node = new BootstrapNode({
-      ...config.config,
-      bannerDisplayed: true
-    });
-
     // Aggiungiamo più log per il debug del PeerId
     logger.info('==== DEBUG AVVIO NODO BOOTSTRAP ====');
     logger.info(`ID Nodo: ${config.config.node.id}`);
@@ -150,52 +142,27 @@ async function runBootstrapNode(options = {}) {
     }
     logger.info('=====================================');
 
-    // AGGIUNTO: Registra questo nodo bootstrap nella lista centrale
-    // Verrà fatto solo in memoria per ora, ma in futuro si potrebbe implementare
-    // un sistema di persistenza più avanzato
-    const nodeInfo = {
-      id: config.config.node.id,
-      host: config.config.p2p.host || '0.0.0.0',
-      port: config.config.p2p.port,
-      name: config.config.node.name,
-      isOfficial: false,
-      status: 'active',
-      location: 'local'
-    };
-    addBootstrapNode(nodeInfo);
-    logger.info(`Nodo bootstrap registrato nella lista centrale: ${nodeInfo.id}`);
-
-    // NOTA: Non è più necessario aggiungere handler per le connessioni in entrata
-    // perché sono già gestiti dalla classe BootstrapNode
-
     // Gestisci l'uscita pulita
-    setupCleanShutdown(node);
-
-    // Avvia il nodo
-    await node.start();
+    setupCleanShutdown();
 
     // Usa il nodeId dal nodo avviato, che sarà quello corretto
-    logger.info(`DRAKON ENTER NODE avviato con successo - ID: ${node.nodeId}`);
+    logger.info(`DRAKON ENTER NODE avviato con successo - ID: ${config.config.node.id}`);
     logger.info(`Porta P2P: ${config.config.p2p.port}`);
     logger.info(`Porta API: ${config.config.api.port}`);
     
     // Ottieni l'indirizzo IP corrente
     const publicIp = process.env.PUBLIC_IP || '127.0.0.1';
-    const peerId = node.networkManager.node.peerId.toString();
+    const peerId = config.config.node.id;
     const port = config.config.p2p.port;
     
     // IMPORTANTE: Salva il PeerId per usi futuri, anche se è lo stesso di prima
     // Questo assicura che tutte le informazioni del PeerId vengano salvate correttamente
     await nodeStorage.saveNodeInfo({
-      nodeId: node.nodeId,
+      nodeId: config.config.node.id,
       peerId: {
         id: peerId,
-        privKey: node.networkManager.node.peerId.privateKey 
-          ? Buffer.from(node.networkManager.node.peerId.privateKey).toString('base64')
-          : null,
-        pubKey: node.networkManager.node.peerId.publicKey 
-          ? Buffer.from(node.networkManager.node.peerId.publicKey).toString('base64')
-          : null
+        privKey: config.config.p2p.savedPeerId ? config.config.p2p.savedPeerId.privKey : null,
+        pubKey: config.config.p2p.savedPeerId ? config.config.p2p.savedPeerId.pubKey : null
       }
     });
     logger.info(`PeerId salvato per future esecuzioni: ${peerId}`);
@@ -213,24 +180,10 @@ async function runBootstrapNode(options = {}) {
     
     logger.info(`Nodo di ingresso in ascolto per connessioni...`);
 
-    // Aggiungi event listeners per connessioni e disconnessioni
-    node.networkManager.on('peer:connect', () => {
-      logger.info('Peer connesso, stampo riepilogo aggiornato');
-      // Stampa il riepilogo aggiornato con il PeerId corretto
-      node.networkManager._printSummaryTable();
-      
-    });
-
-    node.networkManager.on('peer:disconnect', () => {
-      logger.info('Peer disconnesso, stampo riepilogo aggiornato');
-      // Stampa il riepilogo aggiornato
-      node.networkManager._printSummaryTable();
-    });
-
     // Mantieni il processo in esecuzione
     process.stdin.resume();
 
-    return node;
+    return config;
   } catch (error) {
     logger.error("Errore durante l'avvio del nodo bootstrap:", error);
 
@@ -303,11 +256,10 @@ async function ensureDirectories(config) {
 /**
  * Configura la gestione dell'uscita pulita
  */
-function setupCleanShutdown(node) {
+function setupCleanShutdown() {
   // Gestione interruzione (Ctrl+C)
   process.on('SIGINT', async () => {
     logger.info('Ricevuto segnale di interruzione, arresto del nodo bootstrap...');
-    await node.stop();
     logger.info('Nodo bootstrap arrestato con successo');
     process.exit(0);
   });
@@ -315,7 +267,6 @@ function setupCleanShutdown(node) {
   // Gestione terminazione
   process.on('SIGTERM', async () => {
     logger.info('Ricevuto segnale di terminazione, arresto del nodo bootstrap...');
-    await node.stop();
     logger.info('Nodo bootstrap arrestato con successo');
     process.exit(0);
   });
@@ -324,7 +275,6 @@ function setupCleanShutdown(node) {
   process.on('uncaughtException', async error => {
     logger.error('Eccezione non catturata:', error);
     try {
-      await node.stop();
       logger.info("Nodo bootstrap arrestato a causa di un'eccezione non catturata");
     } catch (stopError) {
       logger.error("Errore durante l'arresto del nodo bootstrap:", stopError);
@@ -399,4 +349,4 @@ runBootstrapNode(runOptions)
     process.exit(1);
   });
 
-export { runBootstrapNode }; 
+export { runBootstrapNode };
