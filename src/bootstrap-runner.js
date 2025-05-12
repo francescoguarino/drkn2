@@ -11,12 +11,9 @@ import { displayBootstrapBanner } from './utils/banner.js';
 import { NodeStorage } from './utils/NodeStorage.js';
 import { exec } from 'child_process';
 import undici from 'undici';
-
-// Dopo l'import aggiungi un log per verificare la versione di undici
 const logger = new Logger('BootstrapRunner');
-logger.info(`Versione di undici: ${undici.VERSION || 'sconosciuta'}`);
 
-// Inizializzazione logger
+
 logger.info('Inizializzazione nodo Drakon...');
 
 /**

@@ -22,14 +22,6 @@ const DEFAULT_CONFIG = {
   p2p: {
     port: 6001,
     protocols: ['/drakon/1.0.0'],
-    bootstrapNodes: [
-      // Nodi bootstrap predefiniti (nodi reali attivi)
-      {
-        host: '34.70.102.121',
-        port: 6001,
-        id: '12D3KooWNF7YUcH1tbAW2Rcewy5t9z1RRDRZJ7AdrPauASxmDTr8'
-      },
-    ],
     discovery: {
       // Abilita discovery globale attraverso DHT
       dht: true,
