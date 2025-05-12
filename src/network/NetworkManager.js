@@ -939,11 +939,6 @@ ${connectedPeers.length > 0
         await this.node.peerStore.load();
       }
 
-      // Verifica se siamo in modalità demo, in tal caso non cercare di connettersi ai bootstrap nodes
-      if (this.networkType === 'demo') {
-        this.logger.info('Modalità demo attivata, salto la connessione ai bootstrap nodes');
-        return;
-      }
 
       // Ottieni i nodi bootstrap attivi dal file centralizzato
       const activeNodes = getActiveBootstrapNodes();
