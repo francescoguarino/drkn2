@@ -74,7 +74,8 @@ async function testConnection() {
       host: '34.147.53.15',
       port: 6001,
       apiPort: 7635, // Porta API del nodo bootstrap
-      id: '12D3KooWArtAZ6Q9mMiWPPsnRKTSvsxBXzbpK5dhW1QuBH1bstse'
+      id: '12D3KooWFYbYCGEsYQY71sCfUJFAzBtDJKuZjHonqxbjndPW5Jje'
+
     };
 
     // Validazione dei parametri del bootstrap node
