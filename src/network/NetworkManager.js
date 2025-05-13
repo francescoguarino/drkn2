@@ -103,7 +103,12 @@ export class NetworkManager extends EventEmitter {
       
       // Crea il nodo libp2p con il PeerId ottenuto
       this.logger.info(`Creazione nodo libp2p con PeerId: ${this.peerId.toString()}...`);
+
+
+
+      ///////////ASCOLTO PORTE E  IP /////////////////
               
+      
       // Inizializza la porta di ascolto (con gestione dei conflitti)
       if (!this.port) {
         this.port = this.config.port || 0; // 0 = porta casuale
@@ -163,8 +168,8 @@ export class NetworkManager extends EventEmitter {
       // Fase 2: Crea il nodo libp2p con il PeerId ottenuto
       this.logger.info(`Creazione nodo libp2p con PeerId: ${this.peerId.toString()}`);
 
-      // Inizializza la DHT con il nodeId
-      this.dht = new DHTManager(this.config, this.logger, this.nodeId);
+      // DA AGGIUNGER DHT 
+
 
       // Tenta di avviare il nodo con diverse porte se necessario
       let port = this.p2pPort;
@@ -218,7 +223,7 @@ export class NetworkManager extends EventEmitter {
 
       // Eventi del nodo
       try {
-        this.node.addEventListener('peer:connect', evt => {
+        this.node.addEventListener('peer:connect', (evt) => {
           const connectedPeerId = evt.detail.toString();
           this.logger.info(`Connesso al peer: ${connectedPeerId}`);
           this.peers.add(connectedPeerId);
@@ -1425,7 +1430,7 @@ ${connectedPeers.length > 0
       this.logger.debug('Tentativo di connessione ai bootstrap peers...');
       
       // Array per contenere tutti i bootstrap peers
-      let bootstrapPeers = [];
+      let bootstrapPeers = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWFYbYCGEsYQY71sCfUJFAzBtDJKuZjHonqxbjndPW5Jje'];
       
       // 1. Prova a ottenere bootstrap peers dalle variabili d'ambiente
       const p2pBootstrapPeers = process.env.P2P_BOOTSTRAP_PEERS;
