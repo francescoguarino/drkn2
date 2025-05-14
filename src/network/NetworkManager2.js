@@ -39,7 +39,6 @@ export class MinimalNetworkManager extends EventEmitter {
             peers: 0,
             messageSent: 0,
             messageReceived: 0,
-            MessageChannel : "auto"
         }
     }
 

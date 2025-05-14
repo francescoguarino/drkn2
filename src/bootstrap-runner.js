@@ -9,8 +9,7 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import { displayBootstrapBanner } from './utils/banner.js';
 import { NodeStorage } from './utils/NodeStorage.js';
-import { exec } from 'child_process';
-import undici from 'undici';
+import { BootstrapNode } from './core/BootstrapNode.js';
 const logger = new Logger('BootstrapRunner');
 
 
@@ -27,8 +26,8 @@ async function runBootstrapNode(options = {}) {
     await config.initialize();
 
     // Imposta il percorso dati specifico per il bootstrap
-    const bootstrapDataDir = options.dataDir || path.join(process.cwd(), 'bootstrap-db');
-    
+    const bootstrapDataDir = options.dataDir || path.join(os.homedir(), '.drakon-node');
+
     // Assicurati che il percorso sia assoluto (importante per la persistenza)
     const absoluteDataDir = path.resolve(bootstrapDataDir);
     logger.info(`Percorso dati bootstrap (assoluto): ${absoluteDataDir}`);
@@ -54,7 +53,7 @@ async function runBootstrapNode(options = {}) {
 
     // Stampa informazioni dettagliate su cosa è stato trovato
     logger.info(`Percorso storage: ${path.join(absoluteDataDir, 'storage')}`);
-    logger.info(`File info nodo: ${path.join(absoluteDataDir, 'storage', 'node-info.json')}`);
+    logger.info(`File info nodo: ${path.join(absoluteDataDir, 'storage', 'bootstrap-node-info.json')}`);
     logger.info(`Informazioni salvate trovate: ${!!savedInfo}`);
     if (savedInfo) {
       logger.info(`Contenuto informazioni: ${JSON.stringify({
@@ -103,14 +102,14 @@ async function runBootstrapNode(options = {}) {
     if (options.port) {
       config.config.p2p = config.config.p2p || {};
       config.config.p2p.port = options.port;
-      config.config.api = config.config.api || {};
-      config.config.api.port = options.port + 1000;      
+      // config.config.api = config.config.api || {};
+      // config.config.api.port = options.port + 1000;      
     }
 
-    // MODIFICATO: Disabilita la connessione ad altri nodi bootstrap
-    if (config.config.p2p) {
-      config.config.p2p.bootstrapNodes = [];
-    }
+    // // MODIFICATO: Disabilita la connessione ad altri nodi bootstrap
+    // if (config.config.p2p) {
+    //   config.config.p2p.bootstrapNodes = [];
+    // }
 
     // MODIFICATO: Imposta il tipo di rete a "demo"
     if (!config.config.network) {
@@ -129,6 +128,9 @@ async function runBootstrapNode(options = {}) {
     // Mostra il banner specifico per nodo ENTER
     displayBootstrapBanner(config.config);
 
+    const node = new BootstrapNode(config.config);
+    await node.start();
+
     // Aggiungiamo più log per il debug del PeerId
     logger.info('==== DEBUG AVVIO NODO BOOTSTRAP ====');
     logger.info(`ID Nodo: ${config.config.node.id}`);
@@ -142,10 +144,11 @@ async function runBootstrapNode(options = {}) {
     // Gestisci l'uscita pulita
     setupCleanShutdown();
 
+
+
     // Usa il nodeId dal nodo avviato, che sarà quello corretto
     logger.info(`DRAKON ENTER NODE avviato con successo - ID: ${config.config.node.id}`);
     logger.info(`Porta P2P: ${config.config.p2p.port}`);
-    logger.info(`Porta API: ${config.config.api.port}`);
     
     // Ottieni l'indirizzo IP corrente
     const publicIp = process.env.PUBLIC_IP || '127.0.0.1';

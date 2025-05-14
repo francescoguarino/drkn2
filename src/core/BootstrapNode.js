@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { Logger } from '../utils/logger.js';
-import { NetworkManager } from '../network/NetworkManager.js';
-import { APIServer } from '../api/server.js';
+import { MinimalNetworkManager } from '../network/NetworkManager2.js';
+//import { APIServer } from '../api/server.js';
 import { NodeStorage } from '../utils/NodeStorage.js';
 import path from 'path';
 
@@ -31,7 +31,7 @@ export class BootstrapNode extends EventEmitter {
         {
           nodeId: this.config.node?.id,
           p2pPort: this.config.p2p?.port,
-          apiPort: this.config.api?.port
+          //apiPort: this.config.api?.port
         },
         null,
         2
@@ -40,8 +40,8 @@ export class BootstrapNode extends EventEmitter {
 
     try {
       // Il nodo bootstrap necessita solo di NetworkManager e APIServer
-      this.networkManager = new NetworkManager(this.config, this.storage);
-      this.apiServer = new APIServer(this.config, this);
+      this.networkManager = new MinimalNetworkManager(this.config, this.storage);
+    //  this.apiServer = new APIServer(this.config, this);
       
       this._setupEventHandlers();
     } catch (error) {
@@ -102,10 +102,10 @@ export class BootstrapNode extends EventEmitter {
           this.config.p2p.port = savedInfo.p2pPort;
         }
         
-        if (savedInfo.apiPort) {
-          this.logger.info(`Usando porta API salvata: ${savedInfo.apiPort}`);
-          this.config.api.port = savedInfo.apiPort;
-        }
+        // if (savedInfo.apiPort) {
+        //   this.logger.info(`Usando porta API salvata: ${savedInfo.apiPort}`);
+        //   this.config.api.port = savedInfo.apiPort;
+        // }
       } else {
         // Se non ci sono informazioni salvate, usa l'ID del nodo dalla configurazione
         this.nodeId = this.config.node.id;
@@ -116,10 +116,10 @@ export class BootstrapNode extends EventEmitter {
       await this.networkManager.start();
       
       // Avvia il server API
-      if (this.config.api && this.config.api.enabled) {
-        await this.apiServer.start();
-        await this._setupApiEndpoints(); // Configura gli endpoint API
-      }
+      // if (this.config.api && this.config.api.enabled) {
+      //   await this.apiServer.start();
+      //   await this._setupApiEndpoints(); // Configura gli endpoint API
+      // }
 
       // Ottieni il PeerId corrente dal networkManager
       const currentPeerId = this.networkManager.node.peerId;
@@ -128,7 +128,7 @@ export class BootstrapNode extends EventEmitter {
       await this.storage.saveNodeInfo({
         nodeId: this.nodeId,
         p2pPort: this.config.p2p.port,
-        apiPort: this.config.api.port,
+       // apiPort: this.config.api.port,
         type: 'bootstrap',
         peerId: {
           id: currentPeerId.toString(),
@@ -153,7 +153,7 @@ export class BootstrapNode extends EventEmitter {
       this.emit('started', {
         nodeId: this.nodeId,
         p2pPort: this.config.p2p.port,
-        apiPort: this.config.api.port,
+        //apiPort: this.config.api.port,
         peerId: currentPeerId.toString()
       });
 
@@ -172,9 +172,9 @@ export class BootstrapNode extends EventEmitter {
       this.logger.info('Arresto del nodo bootstrap...');
 
       // Arresta l'API server
-      if (this.apiServer) {
-        await this.apiServer.stop();
-      }
+      // if (this.apiServer) {
+      //   await this.apiServer.stop();
+      // }
 
       // Arresta il network manager
       if (this.networkManager) {
@@ -316,7 +316,7 @@ export class BootstrapNode extends EventEmitter {
       uptime: this._getUptime(),
       addresses: this.networkManager.getAddresses(),
       p2pPort: this.config.p2p.port,
-      apiPort: this.config.api.port
+     // apiPort: this.config.api.port
     };
   }
 
@@ -333,17 +333,17 @@ export class BootstrapNode extends EventEmitter {
     return Math.floor((Date.now() - this.startTime) / 1000);
   }
 
-  async _setupApiEndpoints() {
-    if (this.apiServer) {
-        this.apiServer.addEndpoint('/api/peers', 'GET', async (req, res) => {
-            try {
-                const peers = this.networkManager.getConnectedPeers();
-                res.json({ peers });
-            } catch (error) {
-                this.logger.error('Errore nel recupero della lista dei peer:', error);
-                res.status(500).json({ error: 'Errore interno del server' });
-            }
-        });
-    }
-  }
+  // async _setupApiEndpoints() {
+  //   if (this.apiServer) {
+  //       this.apiServer.addEndpoint('/api/peers', 'GET', async (req, res) => {
+  //           try {
+  //               const peers = this.networkManager.getConnectedPeers();
+  //               res.json({ peers });
+  //           } catch (error) {
+  //               this.logger.error('Errore nel recupero della lista dei peer:', error);
+  //               res.status(500).json({ error: 'Errore interno del server' });
+  //           }
+  //       });
+  //   }
+  // }
 }
