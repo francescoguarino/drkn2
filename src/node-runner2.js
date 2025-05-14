@@ -106,15 +106,7 @@ async function runNode(options = {}) {
     // Mostra il banner
     displayBanner(config.config);
 
-        // Aggiungiamo più log per il debug del PeerId
-        logger.info('==== DEBUG AVVIO NODO BOOTSTRAP ====');
-        logger.info(`ID Nodo: ${config.config.node.id}`);
-        if (savedInfo && savedInfo.peerId) {
-          logger.info(`PeerId salvato: ${savedInfo.peerId.id}`);
-        } else {
-          logger.info('Nessun PeerId salvato trovato');
-        }
-        logger.info('=====================================');
+
     
     // Usa ConfigBuilder per costruire la configurazione definitiva
     const configBuilder = new ConfigBuilder(config.config);
@@ -141,9 +133,12 @@ async function runNode(options = {}) {
     logger.info(`Porta P2P: ${config.config.p2p.port}`);
     
     // Ottieni l'indirizzo IP corrente
+
+    const savedInfoFinal = await nodeStorage.loadNodeInfo();
+
     const publicIp = process.env.PUBLIC_IP || '127.0.0.1';
-    const peerId = config.config.node.id;
-    const port = config.config.p2p.port;
+    const peerId = savedInfoFinal.peerId ? savedInfoFinal.peerId.id : node.peerId.toString();
+    const port = savedInfoFinal.p2pPort;
     
     // IMPORTANTE: Salva il PeerId per usi futuri, anche se è lo stesso di prima
     // Questo assicura che tutte le informazioni del PeerId vengano salvate correttamente

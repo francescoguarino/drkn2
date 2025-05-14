@@ -108,20 +108,20 @@ export class Node extends EventEmitter {
             const currentPeerId = this.networkManager.node.peerId;
 
             // Salva le informazioni del nodo, incluso il PeerId completo
-            await this.storage.saveNodeInfo({
-                nodeId: this.nodeId,
-                p2pPort: this.config.p2p.port,
-                type: 'fullnode',
-                peerId: {
-                    id: currentPeerId.toString(),
-                    privKey: currentPeerId.privateKey
-                        ? Buffer.from(currentPeerId.privateKey).toString('base64')
-                        : null,
-                    pubKey: currentPeerId.publicKey
-                        ? Buffer.from(currentPeerId.publicKey).toString('base64')
-                        : null
-                }
-            });
+            // await this.storage.saveNodeInfo({
+            //     nodeId: this.nodeId,
+            //     p2pPort: this.config.p2p.port,
+            //     type: 'fullnode',
+            //     peerId: {
+            //         id: currentPeerId.toString(),
+            //         privKey: currentPeerId.privateKey
+            //             ? Buffer.from(currentPeerId.privateKey).toString('base64')
+            //             : null,
+            //         pubKey: currentPeerId.publicKey
+            //             ? Buffer.from(currentPeerId.publicKey).toString('base64')
+            //             : null
+            //     }
+            // });
 
 
             // Verifica il percorso di salvataggio effettivo

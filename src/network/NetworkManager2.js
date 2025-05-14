@@ -51,12 +51,12 @@ export class MinimalNetworkManager extends EventEmitter {
         try {
             // Carica le informazioni esistenti
             const nodeInfo = await this.storage.loadNodeInfo();
-            this.logger.info('Informazioni nodo caricate: ' + JSON.stringify({
-                hasNodeInfo: !!nodeInfo,
-                nodeId: nodeInfo?.nodeId || 'non presente',
-                hasPeerId: !!nodeInfo?.peerId,
-                peerIdType: nodeInfo?.peerId ? typeof nodeInfo.peerId : 'non presente'
-            }));
+            // this.logger.info('Informazioni nodo caricate: ' + JSON.stringify({
+            //     hasNodeInfo: !!nodeInfo,
+            //     nodeId: nodeInfo?.nodeId || 'non presente',
+            //     hasPeerId: !!nodeInfo?.peerId,
+            //     peerIdType: nodeInfo?.peerId ? typeof nodeInfo.peerId : 'non presente'
+            // }));
 
             // Se abbiamo informazioni salvate con un PeerId, proviamo a usarle
             if (nodeInfo && nodeInfo.peerId) {
@@ -65,14 +65,14 @@ export class MinimalNetworkManager extends EventEmitter {
                 try {
                     // Verifichiamo che abbiamo la chiave privata
                     if (typeof nodeInfo.peerId === 'object' && nodeInfo.peerId.privKey) {
-                        this.logger.info('Chiavi private trovate, tentativo di ricostruzione PeerId...');
+                      //  this.logger.info('Chiavi private trovate, tentativo di ricostruzione PeerId...');
 
                         try {
                             // Converti la chiave da base64 a buffer
                             const privKeyStr = nodeInfo.peerId.privKey;
                             const privKeyBuffer = Buffer.from(privKeyStr, 'base64');
 
-                            this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
+                         //   this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
 
                             // Decodifica la chiave privata e crea il PeerId
                             const privKey = await unmarshalPrivateKey(privKeyBuffer);
@@ -170,7 +170,6 @@ export class MinimalNetworkManager extends EventEmitter {
     async sendMessage(ma, message) { // Aggiungi peerId come parametro
         try {
             const stream = await this.node.dial(ma);
-            // Correggi 'skin' -> 'sink' e usa la conversione corretta
             await stream.sink([uint8ArrayFromString(JSON.stringify(message))]);
             this.stats.messageSent++;
             return true; 
@@ -180,13 +179,6 @@ export class MinimalNetworkManager extends EventEmitter {
         }
     }
 
-     async getPeers() {
-        if (this.peers.size === 0) {
-            this.logger.info('Nessun peer connesso');
-            return [];
-
-        }
-    }
 
 
 
