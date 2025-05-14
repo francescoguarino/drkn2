@@ -1,4 +1,4 @@
-import { Node } from './core/Node1.js';
+import { Node } from './core/Node2.js';
 import { Logger } from './utils/logger.js';
 import { Config } from './config/config.js';
 import path from 'path';
