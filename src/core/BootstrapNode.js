@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { Logger } from '../utils/logger.js';
-import { MinimalNetworkManager } from '../network/NetworkManager2.js';
+import { MinimalNetworkManager } from '../network/BootstrapNetworkManager.js';
 //import { APIServer } from '../api/server.js';
 import { NodeStorage } from '../utils/NodeStorage.js';
 import path from 'path';
@@ -57,69 +57,13 @@ export class BootstrapNode extends EventEmitter {
     try {
       this.logger.info('Avvio del nodo bootstrap Drakon...');
 
-      // Informazioni di debug su storage e PeerId
-      this.logger.info('---- DEBUG INFO BOOTSTRAP NODE START ----');
-      const loadedInfo = await this.storage.loadNodeInfo();
-      if (loadedInfo) {
-        this.logger.info(`Informazioni di storage caricate: ${JSON.stringify({
-          nodeId: loadedInfo.nodeId,
-          peerId: loadedInfo.peerId ? (typeof loadedInfo.peerId === 'string' ? loadedInfo.peerId : loadedInfo.peerId.id) : null,
-          p2pPort: loadedInfo.p2pPort,
-          apiPort: loadedInfo.apiPort,
-          hasPeerIdKeys: !!(loadedInfo.peerId && loadedInfo.peerId.privKey && loadedInfo.peerId.pubKey)
-          
-        })}`);
-      } else {
-        this.logger.info('Nessuna informazione di storage trovata');
-      }
-      this.logger.info('---------------------------------------');
 
-      // Carica le informazioni esistenti
-      const savedInfo = await this.storage.loadNodeInfo();
 
-      if (savedInfo && savedInfo.nodeId) {
-        this.logger.info(`Caricate informazioni del nodo esistenti con ID: ${savedInfo.nodeId}`);
-        // Usa le informazioni salvate
-        this.nodeId = savedInfo.nodeId;
-        
-        // IMPORTANTE: Imposta il flag persistentPeerId nella configurazione
-        if (savedInfo.peerId) {
-          this.logger.info('PeerId trovato nelle informazioni salvate, configurazione per riutilizzo');
-          this.config.p2p = this.config.p2p || {};
-          this.config.p2p.persistentPeerId = true;
-          
-          // Se abbiamo l'oggetto PeerId completo con chiavi, usa anche quelle
-          if (typeof savedInfo.peerId === 'object' && savedInfo.peerId.privKey && savedInfo.peerId.pubKey) {
-            this.logger.info('Impostazione chiavi PeerId salvate per il riutilizzo');
-            this.config.p2p.savedPeerId = savedInfo.peerId;
-          } else {
-            this.logger.warn('PeerId trovato ma senza chiavi complete');
-          }
-        }
-        
-        if (savedInfo.p2pPort) {
-          this.logger.info(`Usando porta P2P salvata: ${savedInfo.p2pPort}`);
-          this.config.p2p.port = savedInfo.p2pPort;
-        }
-        
-        // if (savedInfo.apiPort) {
-        //   this.logger.info(`Usando porta API salvata: ${savedInfo.apiPort}`);
-        //   this.config.api.port = savedInfo.apiPort;
-        // }
-      } else {
-        // Se non ci sono informazioni salvate, usa l'ID del nodo dalla configurazione
-        this.nodeId = this.config.node.id;
-        this.logger.info(`Usando nuovo ID nodo: ${this.nodeId}`);
-      }
+
 
       // Avvia il network manager (P2P)
       await this.networkManager.start();
       
-      // Avvia il server API
-      // if (this.config.api && this.config.api.enabled) {
-      //   await this.apiServer.start();
-      //   await this._setupApiEndpoints(); // Configura gli endpoint API
-      // }
 
       // Ottieni il PeerId corrente dal networkManager
       const currentPeerId = this.networkManager.node.peerId;
@@ -149,13 +93,7 @@ export class BootstrapNode extends EventEmitter {
       this.isRunning = true;
       this.logger.info('Nodo bootstrap avviato con successo');
       
-      // Emetti l'evento 'started'
-      this.emit('started', {
-        nodeId: this.nodeId,
-        p2pPort: this.config.p2p.port,
-        //apiPort: this.config.api.port,
-        peerId: currentPeerId.toString()
-      });
+
 
       return true;
     } catch (error) {
@@ -269,40 +207,7 @@ export class BootstrapNode extends EventEmitter {
     // Log dettagliato per diagnosticare la ricezione dei messaggi
     this.logger.info(`Messaggio ricevuto da ${peer.id}: ${JSON.stringify(message)}`);
 
-    // Implementa solo gestione messaggi basilari necessari per bootstrap
-    switch (message.type) {
-      case 'PING':
-        // Rispondi con un PONG
-        peer.send({
-          type: 'PONG',
-          payload: {
-            timestamp: Date.now()
-          }
-        }).catch(err => {
-          this.logger.error(`Errore nell'invio del PONG a ${peer.id}:`, err);
-        });
-        break;
-
-      case 'GET_PEERS':
-        // Invia la lista dei peer connessi
-        const connectedPeers = this.networkManager.getConnectedPeers();
-        peer.send({
-          type: 'PEERS_LIST',
-          payload: {
-            peers: connectedPeers.map(p => ({
-              id: p.id,
-              addresses: p.addresses
-            }))
-          }
-        }).catch(err => {
-          this.logger.error(`Errore nell'invio della lista peer a ${peer.id}:`, err);
-        });
-        break;
-
-      default:
-        // Ignora altri tipi di messaggi non supportati dal bootstrap node
-        this.logger.debug(`Messaggio di tipo ${message.type} non gestito dal nodo bootstrap`);
-    }
+   
   }
 
   /**
@@ -316,7 +221,7 @@ export class BootstrapNode extends EventEmitter {
       uptime: this._getUptime(),
       addresses: this.networkManager.getAddresses(),
       p2pPort: this.config.p2p.port,
-     // apiPort: this.config.api.port
+
     };
   }
 
@@ -333,17 +238,4 @@ export class BootstrapNode extends EventEmitter {
     return Math.floor((Date.now() - this.startTime) / 1000);
   }
 
-  // async _setupApiEndpoints() {
-  //   if (this.apiServer) {
-  //       this.apiServer.addEndpoint('/api/peers', 'GET', async (req, res) => {
-  //           try {
-  //               const peers = this.networkManager.getConnectedPeers();
-  //               res.json({ peers });
-  //           } catch (error) {
-  //               this.logger.error('Errore nel recupero della lista dei peer:', error);
-  //               res.status(500).json({ error: 'Errore interno del server' });
-  //           }
-  //       });
-  //   }
-  // }
 }
