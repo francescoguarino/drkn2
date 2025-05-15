@@ -38,6 +38,7 @@ export class MinimalNetworkManager extends EventEmitter {
         this.storage = new NodeStorage(config); // Richiede l'importazione di NodeStorage
         this.config = {
             port: 6001,
+            bootstrapNodes: DEFAULTBOOTSTRAP_NODES,
             ...config
         }
         this.peers = new Set();
@@ -141,6 +142,25 @@ export class MinimalNetworkManager extends EventEmitter {
         this.node.addEventListener('peer:connect', async (evt) => {
             const peer = evt.detail.toString();
             this.logger.warn(`Peer connesso: ${peer}`);
+        });
+
+        this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
+            this.logger.info(`🤝 Connessione ricevuta da ${connection.remotePeer.toString()}`);
+
+            await pipe(
+                stream.source,
+                async function (source) {
+                    for await (const msg of source) {
+                        const received = uint8ArrayToString(msg)
+                        console.log(`[server] Ricevuto: ${received}`)
+                    }
+                }
+            )
+
+            await pipe(
+                [uint8ArrayFromString('Ciao da B!')],
+                stream.sink
+            )
         });
 
         this.node.addEventListener('peer:disconnect', (evt) => {
@@ -261,6 +281,13 @@ export class MinimalNetworkManager extends EventEmitter {
                 ],
                 protocols: [
                     HelloProtocol(),
+                ],
+                peerDiscovery: [
+                    bootstrap({
+                        interval: 20000,
+                        enabled: true,
+                        list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
+                    })
                 ]
             })
 
