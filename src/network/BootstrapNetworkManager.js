@@ -143,6 +143,36 @@ export class MinimalNetworkManager extends EventEmitter {
             this.logger.warn(`Peer connesso: ${peer}`);
         });
 
+        this.node.addEventListener('peer:disconnect', (evt) => {
+            const peer = evt.detail.toString();
+            this.logger.warn(`Peer disconnesso: ${peer}`);
+            this.peers.delete(peer);
+            this.stats.peers = this.peers.size;
+        }
+        );
+        this.node.addEventListener('stream:open', (evt) => {
+            const stream = evt.detail.stream;
+            this.logger.info(`Stream aperto: ${stream.id}`);
+        });
+        this.node.addEventListener('stream:close', (evt) => {
+            const stream = evt.detail.stream;
+            this.logger.info(`Stream chiuso: ${stream.id}`);
+        });
+        this.node.addEventListener('stream:message', (evt) => {
+            const message = evt.detail.message;
+            this.logger.info(`Messaggio ricevuto: ${uint8ArrayToString(message)}`);
+            this.stats.messageReceived++;
+            this.emit('message', JSON.parse(uint8ArrayToString(message)));
+        });
+        this.node.addEventListener('stream:error', (evt) => {
+            const error = evt.detail.error;
+            this.logger.error(`Errore nello stream: ${error.message}`);
+        });
+        this.node.addEventListener('peer:error', (evt) => {
+            const error = evt.detail.error;
+            this.logger.error(`Errore con il peer: ${error.message}`);
+        });
+
 
     }
 
