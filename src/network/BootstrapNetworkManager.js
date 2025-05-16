@@ -29,7 +29,7 @@ import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
 
-const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWFYbYCGEsYQY71sCfUJFAzBtDJKuZjHonqxbjndPW5Jje'];
+const DEFAULTBOOTSTRAP_NODES = [];
 
 export class MinimalNetworkManager extends EventEmitter {
     constructor(config = {}) {
@@ -276,13 +276,13 @@ export class MinimalNetworkManager extends EventEmitter {
             })
 
 
-            
+            this.setupHandlers();
 
 
             await this.node.start();
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
-            this.setupHandlers();
+
             return true
 
 
