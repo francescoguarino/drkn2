@@ -267,11 +267,11 @@ export class MinimalNetworkManager extends EventEmitter {
                     HelloProtocol(),
                 ],
                 peerDiscovery: [
-                    bootstrap({
-                        interval: 20000,
-                        enabled: true,
-                        list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
-                    })
+                    // bootstrap({
+                    //     interval: 20000,
+                    //     enabled: true,
+                    //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
+                    // })
                 ]
             })
 
