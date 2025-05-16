@@ -196,22 +196,6 @@ export class MinimalNetworkManager extends EventEmitter {
 
     }
 
-    async sendMessage(peerIdStr, protocol, message) {
-        try {
-            const peerId = peerIdFromString(peerIdStr); // Conversione a PeerId
-            const { stream } = await this.node.dialProtocol(peerId, protocol);
-
-            await pipe(
-                [uint8ArrayFromString(JSON.stringify(message))],
-                stream
-            );
-
-            this.stats.messageSent++;
-        } catch (err) {
-            this.logger.error(`Errore durante l'invio del messaggio a ${peerIdStr}:: ${err.message}`, err);
-        }
-    }
-
     async stop() {
         try {
             this.logger.info('Arresto del NetworkManager...');

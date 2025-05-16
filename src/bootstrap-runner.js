@@ -129,43 +129,31 @@ async function runBootstrapNode(options = {}) {
     displayBootstrapBanner(config.config);
 
     const node = new BootstrapNode(config.config);
-    await node.start();
-
-    // Aggiungiamo più log per il debug del PeerId
-    logger.info('==== DEBUG AVVIO NODO BOOTSTRAP ====');
-    logger.info(`ID Nodo: ${config.config.node.id}`);
-    if (savedInfo && savedInfo.peerId) {
-      logger.info(`PeerId salvato: ${savedInfo.peerId.id}`);
-    } else {
-      logger.info('Nessun PeerId salvato trovato');
-    }
-    logger.info('=====================================');
-
-    // Gestisci l'uscita pulita
     setupCleanShutdown();
-
+    await node.start();
 
 
     // Usa il nodeId dal nodo avviato, che sarà quello corretto
     logger.info(`DRAKON ENTER NODE avviato con successo - ID: ${config.config.node.id}`);
     logger.info(`Porta P2P: ${config.config.p2p.port}`);
     
-    // Ottieni l'indirizzo IP corrente
+    const savedInfoFinal = await nodeStorage.loadNodeInfo();
+
     const publicIp = process.env.PUBLIC_IP || '127.0.0.1';
-    const peerId = config.config.node.id;
-    const port = config.config.p2p.port;
+    const peerId = savedInfoFinal.peerId ? savedInfoFinal.peerId.id : node.peerId.toString();
+    const port = savedInfoFinal.p2pPort;
     
-    // IMPORTANTE: Salva il PeerId per usi futuri, anche se è lo stesso di prima
-    // Questo assicura che tutte le informazioni del PeerId vengano salvate correttamente
-    await nodeStorage.saveNodeInfo({
-      nodeId: config.config.node.id,
-      peerId: {
-        id: peerId,
-        privKey: config.config.p2p.savedPeerId ? config.config.p2p.savedPeerId.privKey : null,
-        pubKey: config.config.p2p.savedPeerId ? config.config.p2p.savedPeerId.pubKey : null
-      }
-    });
-    logger.info(`PeerId salvato per future esecuzioni: ${peerId}`);
+    // // IMPORTANTE: Salva il PeerId per usi futuri, anche se è lo stesso di prima
+    // // Questo assicura che tutte le informazioni del PeerId vengano salvate correttamente
+    // await nodeStorage.saveNodeInfo({
+    //   nodeId: config.config.node.id,
+    //   peerId: {
+    //     id: peerId,
+    //     privKey: config.config.p2p.savedPeerId ? config.config.p2p.savedPeerId.privKey : null,
+    //     pubKey: config.config.p2p.savedPeerId ? config.config.p2p.savedPeerId.pubKey : null
+    //   }
+    // });
+    // logger.info(`PeerId salvato per future esecuzioni: ${peerId}`);
     
     // Mostra l'indirizzo completo per la connessione
     logger.info('');
