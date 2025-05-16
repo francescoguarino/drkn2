@@ -145,22 +145,24 @@ export class MinimalNetworkManager extends EventEmitter {
         });
 
         this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
-            this.logger.info(`🤝 Connessione ricevuta da ${connection.remotePeer.toString()}`);
+            const peerId = connection.remotePeer.toString();
+            this.logger.info(`Ricevuto stream HelloProtocol da ${peerId}`);
 
-            await pipe(
-                stream.source,
-                async function (source) {
-                    for await (const msg of source) {
-                        const received = uint8ArrayToString(msg)
-                        console.log(`[server] Ricevuto: ${received}`)
-                    }
-                }
-            )
+            // Ricevo messaggio
+            for await (const data of stream.source) {
+                const msg = uint8ArrayToString(data);
+                this.logger.info(`Messaggio ricevuto da ${peerId}: ${msg}`);
+                this.stats.messageReceived++;
 
-            await pipe(
-                [uint8ArrayFromString('Ciao da B!')],
-                stream.sink
-            )
+                // Rispondo al client
+                const reply = `Ciao ${peerId}, ho ricevuto: "${msg}"`;
+                await pipe(
+                    [uint8ArrayFromString(reply)],
+                    stream.sink
+                );
+                this.stats.messageSent++;
+                this.logger.info(`Risposta inviata a ${peerId}: ${reply}`);
+            }
         });
 
         this.node.addEventListener('peer:disconnect', (evt) => {
@@ -170,28 +172,7 @@ export class MinimalNetworkManager extends EventEmitter {
             this.stats.peers = this.peers.size;
         }
         );
-        this.node.addEventListener('stream:open', (evt) => {
-            const stream = evt.detail.stream;
-            this.logger.info(`Stream aperto: ${stream.id}`);
-        });
-        this.node.addEventListener('stream:close', (evt) => {
-            const stream = evt.detail.stream;
-            this.logger.info(`Stream chiuso: ${stream.id}`);
-        });
-        this.node.addEventListener('stream:message', (evt) => {
-            const message = evt.detail.message;
-            this.logger.info(`Messaggio ricevuto: ${uint8ArrayToString(message)}`);
-            this.stats.messageReceived++;
-            this.emit('message', JSON.parse(uint8ArrayToString(message)));
-        });
-        this.node.addEventListener('stream:error', (evt) => {
-            const error = evt.detail.error;
-            this.logger.error(`Errore nello stream: ${error.message}`);
-        });
-        this.node.addEventListener('peer:error', (evt) => {
-            const error = evt.detail.error;
-            this.logger.error(`Errore con il peer: ${error.message}`);
-        });
+        
 
 
     }
