@@ -276,13 +276,13 @@ export class MinimalNetworkManager extends EventEmitter {
             })
 
 
-            this.setupHandlers();
+            
 
 
             await this.node.start();
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
-
+            this.setupHandlers();
             return true
 
 
