@@ -148,17 +148,25 @@ export class MinimalNetworkManager extends EventEmitter {
             const peerId = connection.remotePeer.toString()
             this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
-            // Ricezione
-            for await (const data of stream.source) {
-                if (!(data instanceof Uint8Array)) {
-                    this.logger.warn(`Chunk non valido (${data}), skipping…`)
+            for await (const packet of stream.source) {
+                // 1) extract Uint8Array from packet
+                const chunk = packet instanceof Uint8Array
+                    ? packet
+                    : packet && packet.data instanceof Uint8Array
+                        ? packet.data
+                        : null
+
+                if (!chunk) {
+                    this.logger.warn(`Ricevuto chunk non processabile (${packet}), skipping…`)
                     continue
                 }
-                const incoming = uint8ArrayToString(data)
+
+                // 2) convert to string
+                const incoming = uint8ArrayToString(chunk)
                 this.logger.info(`Ricevuto da ${peerId}: ${incoming}`)
                 this.stats.messageReceived++
 
-                // Risposta
+                // 3) reply
                 const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`
                 await pipe(
                     [uint8ArrayFromString(reply)],
@@ -168,6 +176,7 @@ export class MinimalNetworkManager extends EventEmitter {
                 this.stats.messageSent++
             }
         })
+
 
 
         this.node.addEventListener('peer:disconnect', (evt) => {
