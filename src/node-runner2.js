@@ -129,7 +129,7 @@ async function runNode(options = {}) {
     await node.start();
 
     // Usa il nodeId dal nodo avviato, che sarà quello corretto
-    logger.info(`DRAKON ENTER NODE avviato con successo - ID: ${config.config.node.id}`);
+    logger.info(`DRAKON  NODE avviato con successo - ID: ${config.config.node.id}`);
     logger.info(`Porta P2P: ${config.config.p2p.port}`);
     
     // Ottieni l'indirizzo IP corrente
