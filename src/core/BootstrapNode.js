@@ -13,7 +13,7 @@ import path from 'path';
 export class BootstrapNode extends EventEmitter {
   constructor(config) {
     super();
-    
+
     if (!config) {
       throw new Error('La configurazione è richiesta');
     }
@@ -24,30 +24,7 @@ export class BootstrapNode extends EventEmitter {
     this.bannerDisplayed = config.bannerDisplayed || false;
     this.isRunning = false;
 
-    // Debug info
-    this.logger.debug(
-      'Inizializzazione del nodo bootstrap con la configurazione:',
-      JSON.stringify(
-        {
-          nodeId: this.config.node?.id,
-          p2pPort: this.config.p2p?.port,
-          //apiPort: this.config.api?.port
-        },
-        null,
-        2
-      )
-    );
 
-    try {
-      // Il nodo bootstrap necessita solo di NetworkManager e APIServer
-      this.networkManager = new MinimalNetworkManager(this.config, this.storage);
-    //  this.apiServer = new APIServer(this.config, this);
-      
-      this._setupEventHandlers();
-    } catch (error) {
-      this.logger.error("Errore durante l'inizializzazione del nodo bootstrap:", error);
-      throw error;
-    }
   }
 
   /**
@@ -56,35 +33,95 @@ export class BootstrapNode extends EventEmitter {
   async start() {
     try {
       this.logger.info('Avvio del nodo bootstrap Drakon...');
+      // Informazioni di debug su storage e PeerId
+      this.logger.info('---- DEBUG INFO  NODE START ----');
+      const loadedInfo = await this.storage.loadNodeInfo();
+      if (loadedInfo) {
+        this.logger.info(`Informazioni di storage caricate: ${JSON.stringify({
+          nodeId: loadedInfo.nodeId,
+          peerId: loadedInfo.peerId ? (typeof loadedInfo.peerId === 'string' ? loadedInfo.peerId : loadedInfo.peerId.id) : null,
+          p2pPort: loadedInfo.p2pPort,
+          hasPeerIdKeys: !!(loadedInfo.peerId && loadedInfo.peerId.privKey && loadedInfo.peerId.pubKey)
+
+        })}`);
+      } else {
+        this.logger.info('Nessuna informazione di storage trovata');
+      }
+      this.logger.info('---------------------------------------');
 
 
+      const savedInfo = await this.storage.loadNodeInfo();
 
+      if (savedInfo && savedInfo.nodeId) {
+        this.logger.info(`Caricate informazioni del nodo esistenti con ID: ${savedInfo.nodeId}`);
+        // Usa le informazioni salvate
+        this.nodeId = savedInfo.nodeId;
+
+        // IMPORTANTE: Imposta il flag persistentPeerId nella configurazione
+        if (savedInfo.peerId) {
+          this.logger.info('PeerId trovato nelle informazioni salvate, configurazione per riutilizzo');
+          this.config.p2p = this.config.p2p || {};
+          this.config.p2p.persistentPeerId = true;
+
+          // Se abbiamo l'oggetto PeerId completo con chiavi, usa anche quelle
+          if (typeof savedInfo.peerId === 'object' && savedInfo.peerId.privKey && savedInfo.peerId.pubKey) {
+            this.logger.info('Impostazione chiavi PeerId salvate per il riutilizzo');
+            this.config.p2p.savedPeerId = savedInfo.peerId;
+          } else {
+            this.logger.warn('PeerId trovato ma senza chiavi complete');
+          }
+        }
+
+        if (savedInfo.p2pPort) {
+          this.logger.info(`Usando porta P2P salvata: ${savedInfo.p2pPort}`);
+          this.config.p2p.port = savedInfo.p2pPort;
+        }
+
+
+      } else {
+        // Se non ci sono informazioni salvate, usa l'ID del nodo dalla configurazione
+        this.nodeId = this.config.node.id;
+        this.logger.info(`Usando nuovo ID nodo: ${this.nodeId}`);
+      }
+
+      // Usa ConfigBuilder per costruire la configurazione definitiva
+      const configBuilder = new ConfigBuilder(this.config);
+      const finalConfig = configBuilder
+        .setNodeId(this.nodeId)
+        .setDataDir(this.config.node.dataDir)
+        .setP2PPort(this.config.p2p.port)
+        .build();
+
+      this.logger.info('Configurazione finale costruita:', finalConfig);
+
+
+      this.networkManager = new MinimalNetworkManager(finalConfig, this.storage);
 
 
       // Avvia il network manager (P2P)
       await this.networkManager.start();
-      
+
 
       // Ottieni il PeerId corrente dal networkManager
       const currentPeerId = this.networkManager.node.peerId;
-      
+
       // Salva le informazioni del nodo, incluso il PeerId completo
       await this.storage.saveNodeInfo({
         nodeId: this.nodeId,
         p2pPort: this.config.p2p.port,
-       // apiPort: this.config.api.port,
+        // apiPort: this.config.api.port,
         type: 'bootstrap',
         peerId: {
           id: currentPeerId.toString(),
-          privKey: currentPeerId.privateKey 
+          privKey: currentPeerId.privateKey
             ? Buffer.from(currentPeerId.privateKey).toString('base64')
             : null,
-          pubKey: currentPeerId.publicKey 
+          pubKey: currentPeerId.publicKey
             ? Buffer.from(currentPeerId.publicKey).toString('base64')
             : null
         }
       });
-      
+
       // Verifica il percorso di salvataggio effettivo
       const storagePath = path.resolve(this.storage.storageDir);
       this.logger.info(`PeerId salvato per futuri riavvii in: ${storagePath}`);
@@ -92,7 +129,7 @@ export class BootstrapNode extends EventEmitter {
 
       this.isRunning = true;
       this.logger.info('Nodo bootstrap avviato con successo');
-      
+
 
 
       return true;
@@ -121,7 +158,7 @@ export class BootstrapNode extends EventEmitter {
 
       this.isRunning = false;
       this.logger.info('Nodo bootstrap arrestato con successo!');
-      
+
       // Emetti l'evento 'stopped'
       this.emit('stopped');
 
@@ -132,58 +169,9 @@ export class BootstrapNode extends EventEmitter {
     }
   }
 
-  /**
-   * Configura i gestori di eventi
-   */
-  _setupEventHandlers() {
-    // Gestione eventi di rete
-    this.networkManager.on('peer:connect', (peer) => {
-      if (!peer || !peer.id) {
-        this.logger.warn('⚠️ Evento peer:connect ricevuto senza peer.id definito');
-        return;
-      }
-
-      this.logger.info(`Nuovo peer connesso: ${peer.id}`);
-
-      // Propaga il messaggio di connessione agli altri peer
-      this._propagateMessage({
-        type: 'NEW_PEER_CONNECTED',
-        payload: {
-          peerId: peer.id,
-          timestamp: Date.now()
-        }
-      }, peer.id);
-
-      // Propaga l'evento
-      this.emit('peer:connect', peer);
-    });
-
-    this.networkManager.on('peer:disconnect', (peer) => {
-      if (!peer || !peer.id) {
-        this.logger.warn('⚠️ Evento peer:disconnect ricevuto senza peer.id definito');
-        return;
-      }
-      
-      this.logger.info(`Peer disconnesso: ${peer.id}`);
-      this.emit('peer:disconnect', peer);
-    });
-
-    this.networkManager.on('message', (message, peer) => {
-      if (!peer || !peer.id) {
-        this.logger.warn('⚠️ Evento message ricevuto senza peer.id definito');
-        return;
-      }
-      
-      this.logger.debug(`Messaggio ricevuto da ${peer.id}: ${message ? message.type : 'undefined'}`);
-      this.emit('message', message, peer);
-      
-      // Gestione semplice dei messaggi
-      this._handleMessage(message, peer);
-    });
-  }
 
   async _propagateMessage(message, excludePeerId = null) {
-    if (message ) {
+    if (message) {
       this.logger.info('Messaggio propagato:', message);
 
     }
@@ -207,7 +195,7 @@ export class BootstrapNode extends EventEmitter {
     // Log dettagliato per diagnosticare la ricezione dei messaggi
     this.logger.info(`Messaggio ricevuto da ${peer.id}: ${JSON.stringify(message)}`);
 
-   
+
   }
 
   /**
