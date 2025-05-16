@@ -4,7 +4,7 @@ import { MinimalNetworkManager } from '../network/BootstrapNetworkManager.js';
 //import { APIServer } from '../api/server.js';
 import { NodeStorage } from '../utils/NodeStorage.js';
 import path from 'path';
-
+import { ConfigBuilder } from '../utils/ConfigBuilder.js';
 /**
  * Classe specializzata per i nodi bootstrap della rete Drakon.
  * Implementa solo le funzionalità necessarie per un nodo di ingresso,
