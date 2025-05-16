@@ -145,25 +145,30 @@ export class MinimalNetworkManager extends EventEmitter {
         });
 
         this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
-            const peerId = connection.remotePeer.toString();
-            this.logger.info(`Ricevuto stream HelloProtocol da ${peerId}`);
+            const peerId = connection.remotePeer.toString()
+            this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
-            // Ricevo messaggio
+            // Ricezione
             for await (const data of stream.source) {
-                const msg = uint8ArrayToString(data);
-                this.logger.info(`Messaggio ricevuto da ${peerId}: ${msg}`);
-                this.stats.messageReceived++;
+                if (!(data instanceof Uint8Array)) {
+                    this.logger.warn(`Chunk non valido (${data}), skipping…`)
+                    continue
+                }
+                const incoming = uint8ArrayToString(data)
+                this.logger.info(`Ricevuto da ${peerId}: ${incoming}`)
+                this.stats.messageReceived++
 
-                // Rispondo al client
-                const reply = `Ciao ${peerId}, ho ricevuto: "${msg}"`;
+                // Risposta
+                const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`
                 await pipe(
                     [uint8ArrayFromString(reply)],
                     stream.sink
-                );
-                this.stats.messageSent++;
-                this.logger.info(`Risposta inviata a ${peerId}: ${reply}`);
+                )
+                this.logger.info(`Risposta inviata a ${peerId}`)
+                this.stats.messageSent++
             }
-        });
+        })
+
 
         this.node.addEventListener('peer:disconnect', (evt) => {
             const peer = evt.detail.toString();
@@ -172,7 +177,7 @@ export class MinimalNetworkManager extends EventEmitter {
             this.stats.peers = this.peers.size;
         }
         );
-        
+
 
 
     }
