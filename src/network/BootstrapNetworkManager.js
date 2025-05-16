@@ -9,12 +9,12 @@ import { unmarshalPrivateKey } from '@libp2p/crypto/keys'
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
 import { noise } from '@libp2p/noise'
-import { identify } from '@libp2p/identify'
+//import { identify } from '@libp2p/identify'
 import { mplex } from '@libp2p/mplex'
-import { bootstrap } from '@libp2p/bootstrap'
+//import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
-import { webRTC } from '@libp2p/webrtc'
-import { webSockets } from '@libp2p/websockets'
+//import { webRTC } from '@libp2p/webrtc'
+//import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
 
 import { HelloProtocol } from './protocols/Hello.js'
@@ -22,7 +22,6 @@ import { HelloProtocol } from './protocols/Hello.js'
 // Utils per messaggi
 import { fromString as uint8ArrayFromString, toString as uint8ArrayToString } from 'uint8arrays'
 import { EventEmitter } from 'events'
-import { peerIdFromString } from '@libp2p/peer-id';
 
 
 import { Logger } from '../utils/logger.js'
@@ -31,7 +30,7 @@ import { NodeStorage } from '../utils/NodeStorage.js'
 
 const DEFAULTBOOTSTRAP_NODES = [];
 
-export class MinimalNetworkManager extends EventEmitter {
+export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
         super(),
             this.logger = new Logger('Manager-Network-Light');

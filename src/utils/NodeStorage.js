@@ -160,13 +160,15 @@ export class NodeStorage {
         this.logger.debug(`NodeId caricato: ${nodeInfo.nodeId}`);
       }
 
+
+      // Log del PeerId DEBUG NEL LOGGER , PER CONTROLLARE CHE SIA CORRETTO AD OGNI CAMBIO DI STATO 
       if (nodeInfo.peerId) {
         if (typeof nodeInfo.peerId === 'string') {
           this.logger.debug(`PeerId caricato (stringa): ${nodeInfo.peerId}`);
         } else if (typeof nodeInfo.peerId === 'object') {
-          this.logger.info(`PeerId caricato (oggetto con id): ${nodeInfo.peerId.id || 'id mancante'}`);
-          this.logger.info(`PeerId ha chiave privata: ${!!nodeInfo.peerId.privKey}`);
-          this.logger.info(`PeerId ha chiave pubblica: ${!!nodeInfo.peerId.pubKey}`);
+          this.logger.debug(`PeerId caricato (oggetto con id): ${nodeInfo.peerId.id || 'id mancante'}`);
+          this.logger.debug(`PeerId ha chiave privata: ${!!nodeInfo.peerId.privKey}`);
+          this.logger.debug(`PeerId ha chiave pubblica: ${!!nodeInfo.peerId.pubKey}`);
           
           if (nodeInfo.peerId.privKey) {
             const keyLength = nodeInfo.peerId.privKey.length;

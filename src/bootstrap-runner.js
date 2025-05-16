@@ -1,5 +1,4 @@
-// IMPORTANTE: Questo file usa una versione fissata di undici (5.28.4) per evitare l'errore 'Cannot read properties of undefined (reading 'close')'
-// Questo errore è causato da un bug noto in libp2p o nelle sue dipendenze e verrà risolto in versioni future.
+
 
 import { Logger } from './utils/logger.js';
 import { Config } from './config/config.js';
@@ -102,25 +101,10 @@ async function runBootstrapNode(options = {}) {
     if (options.port) {
       config.config.p2p = config.config.p2p || {};
       config.config.p2p.port = options.port;
-      // config.config.api = config.config.api || {};
-      // config.config.api.port = options.port + 1000;      
+  
     }
 
-    // // MODIFICATO: Disabilita la connessione ad altri nodi bootstrap
-    // if (config.config.p2p) {
-    //   config.config.p2p.bootstrapNodes = [];
-    // }
-
-    // MODIFICATO: Imposta il tipo di rete a "demo"
-    if (!config.config.network) {
-      config.config.network = {
-        type: 'demo',
-        maxPeers: 50,
-        peerTimeout: 30000
-      };
-    } else {
-      config.config.network.type = 'demo';
-    }
+ 
     
     // Crea le directory necessarie
     await ensureDirectories(config.config);

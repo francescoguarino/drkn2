@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { Logger } from '../utils/logger.js';
-import { MinimalNetworkManager } from '../network/BootstrapNetworkManager.js';
-//import { APIServer } from '../api/server.js';
+import { NetworkManager } from '../network/BootstrapNetworkManager.js';
+
 import { NodeStorage } from '../utils/NodeStorage.js';
 import path from 'path';
 import { ConfigBuilder } from '../utils/ConfigBuilder.js';
@@ -95,7 +95,7 @@ export class BootstrapNode extends EventEmitter {
       this.logger.info('Configurazione finale costruita:', finalConfig);
 
 
-      this.networkManager = new MinimalNetworkManager(finalConfig, this.storage);
+      this.networkManager = new NetworkManager(finalConfig, this.storage);
 
 
       // Avvia il network manager (P2P)
@@ -146,10 +146,6 @@ export class BootstrapNode extends EventEmitter {
     try {
       this.logger.info('Arresto del nodo bootstrap...');
 
-      // Arresta l'API server
-      // if (this.apiServer) {
-      //   await this.apiServer.stop();
-      // }
 
       // Arresta il network manager
       if (this.networkManager) {
