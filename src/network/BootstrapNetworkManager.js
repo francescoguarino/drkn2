@@ -260,7 +260,7 @@ export class NetworkManager extends EventEmitter {
             });
 
 
-            this.kad = kadDHT({
+            kad = kadDHT({
                 enabled: true,
                 clientMode: false,
                 randomWalk: {
@@ -295,12 +295,16 @@ export class NetworkManager extends EventEmitter {
                         enabled: false           // disabilita discovery su se stesso
                     })
                 ],
-                dht: this.kad,
+                dht: kad,
                 protocols: [HelloProtocol()]
 
 
 
             })
+
+            this.dht = kad;
+
+
 
             this.setupHandlers();
 
