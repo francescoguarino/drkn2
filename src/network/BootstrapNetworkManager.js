@@ -193,7 +193,7 @@ setupHandlers() {
 
     // Log periodico DHT routing table
     setInterval(() => {
-        const dht = this.node._dht; // Occhio: proprietà privata
+        this.dht = this.node._components.getDHT()
         if (dht && dht.routingTable) {
             const size = dht.routingTable.size;
             this.logger.info(`📈 DHT routing table size: ${size}`);
