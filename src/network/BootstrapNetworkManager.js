@@ -260,7 +260,7 @@ export class NetworkManager extends EventEmitter {
             });
 
 
-            kad = kadDHT({
+            const kad = kadDHT({
                 enabled: true,
                 clientMode: false,
                 randomWalk: {
