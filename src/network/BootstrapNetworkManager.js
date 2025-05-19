@@ -195,8 +195,8 @@ export class NetworkManager extends EventEmitter {
 
 
         setInterval(() => {
-            if (this.dht?.routingTable) {
-                const size = this.dht.routingTable.size;
+            if (this.kad?.routingTable) {
+                const size = this.kad.routingTable.size;
                 this.logger.info(`📈 DHT routing table size: ${size}`);
             } else {
                 this.logger.warn(`⚠️ DHT o routingTable non disponibile`);
@@ -260,6 +260,17 @@ export class NetworkManager extends EventEmitter {
             });
 
 
+            this.kad = kadDHT({
+                enabled: true,
+                clientMode: false,
+                randomWalk: {
+                    enabled: true,
+                    interval: 300e3,
+                    timeout: 30e3
+                }
+            });
+
+
             this.node = await createLibp2p({
                 peerId: this.peerId,
                 addresses: {
@@ -284,19 +295,13 @@ export class NetworkManager extends EventEmitter {
                         enabled: false           // disabilita discovery su se stesso
                     })
                 ],
-                dht: kadDHT({
-                    enabled: true,
-                    clientMode: false,
-                    randomWalk: {
-                        enabled: true,
-                        interval: 300e3,
-                        timeout: 30e3
-                    }
-                }),
+                dht: this.kad,
                 protocols: [HelloProtocol()]
+
+
+
             })
 
-            this.dht = this.node.components?.dht;
             this.setupHandlers();
 
 
