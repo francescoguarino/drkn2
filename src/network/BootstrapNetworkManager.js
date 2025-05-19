@@ -127,81 +127,82 @@ export class NetworkManager extends EventEmitter {
         }
     }
 
-setupHandlers() {
-    // Peer discovery
-    this.node.addEventListener('peer:discovery', (evt) => {
-        const peer = evt.detail.id.toString();
-        if (!this.peers.has(peer)) {
-            this.peers.add(peer);
-            this.logger.info(`🔍 Nuovo peer scoperto: ${peer}`);
-            this.stats.peers = this.peers.size;
-            this.emit('peer:discovered', peer);
-        }
-    });
-
-    // Peer connect
-    this.node.addEventListener('peer:connect', (evt) => {
-        const connection = evt.detail;
-        const peer = connection.remotePeer.toString();
-        this.logger.warn(`✅ Peer connesso: ${peer}`);
-    });
-
-    // Peer disconnect
-    this.node.addEventListener('peer:disconnect', (evt) => {
-        const connection = evt.detail;
-        const peer = connection.remotePeer.toString();
-        this.logger.warn(`❌ Peer disconnesso: ${peer}`);
-        this.peers.delete(peer);
-        this.stats.peers = this.peers.size;
-    });
-
-    // Protocol handler
-    this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
-        const peerId = connection.remotePeer.toString();
-        this.logger.info(`📨 Ricevuto stream da ${peerId} sul protocollo /drakon/hello/1.0.0`);
-
-        for await (const packet of stream.source) {
-            const chunk = (
-                packet instanceof Uint8Array
-                    ? packet
-                    : packet?.data instanceof Uint8Array
-                        ? packet.data
-                        : typeof packet?.subarray === 'function'
-                            ? packet.subarray()
-                            : null
-            );
-
-            if (!chunk) {
-                this.logger.warn(`⚠️ Chunk non valido ricevuto da ${peerId}`);
-                continue;
+    setupHandlers() {
+        // Peer discovery
+        this.node.addEventListener('peer:discovery', (evt) => {
+            const peer = evt.detail.id.toString();
+            if (!this.peers.has(peer)) {
+                this.peers.add(peer);
+                this.logger.info(`🔍 Nuovo peer scoperto: ${peer}`);
+                this.stats.peers = this.peers.size;
+                this.emit('peer:discovered', peer);
             }
+        });
 
-            const incoming = uint8ArrayToString(chunk);
-            this.logger.info(`📥 Messaggio da ${peerId}: ${incoming}`);
-            this.stats.messageReceived++;
+        // Peer connect
+        this.node.addEventListener('peer:connect', (evt) => {
+            const connection = evt.detail;
+            const peer = connection.remotePeer.toString();
+            this.logger.warn(`✅ Peer connesso: ${peer}`);
+        });
 
-            const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`;
-            await pipe(
-                [uint8ArrayFromString(reply)],
-                stream.sink
-            );
+        // Peer disconnect
+        this.node.addEventListener('peer:disconnect', (evt) => {
+            const connection = evt.detail;
+            const peer = connection.remotePeer.toString();
+            this.logger.warn(`❌ Peer disconnesso: ${peer}`);
+            this.peers.delete(peer);
+            this.stats.peers = this.peers.size;
+        });
 
-            this.logger.info(`📤 Risposta inviata a ${peerId}`);
-            this.stats.messageSent++;
-        }
-    });
+        // Protocol handler
+        this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
+            const peerId = connection.remotePeer.toString();
+            this.logger.info(`📨 Ricevuto stream da ${peerId} sul protocollo /drakon/hello/1.0.0`);
 
-    // Log periodico DHT routing table
-    setInterval(() => {
-        this.dht = this.node._components.getDHT()
-        if (dht && dht.routingTable) {
-            const size = dht.routingTable.size;
-            this.logger.info(`📈 DHT routing table size: ${size}`);
-        } else {
-            this.logger.warn(`⚠️ Impossibile accedere alla DHT o routingTable`);
-        }
-    }, 60000); // ogni 60s
-}
+            for await (const packet of stream.source) {
+                const chunk = (
+                    packet instanceof Uint8Array
+                        ? packet
+                        : packet?.data instanceof Uint8Array
+                            ? packet.data
+                            : typeof packet?.subarray === 'function'
+                                ? packet.subarray()
+                                : null
+                );
+
+                if (!chunk) {
+                    this.logger.warn(`⚠️ Chunk non valido ricevuto da ${peerId}`);
+                    continue;
+                }
+
+                const incoming = uint8ArrayToString(chunk);
+                this.logger.info(`📥 Messaggio da ${peerId}: ${incoming}`);
+                this.stats.messageReceived++;
+
+                const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`;
+                await pipe(
+                    [uint8ArrayFromString(reply)],
+                    stream.sink
+                );
+
+                this.logger.info(`📤 Risposta inviata a ${peerId}`);
+                this.stats.messageSent++;
+            }
+        });
+
+        // Log periodico DHT routing table
+        setInterval(() => {
+
+            if (!this.dht) this.logger.warn('⚠️ DHT non disponibile tra i componenti');
+            if (this.dht && this.dht.routingTable) {
+                const size = this.dht.routingTable.size;
+                this.logger.info(`📈 DHT routing table size: ${size}`);
+            } else {
+                this.logger.warn(`⚠️ Impossibile accedere alla DHT o routingTable`);
+            }
+        }, 60000); // ogni 60s
+    }
 
 
 
@@ -209,111 +210,113 @@ setupHandlers() {
 
 
     async stop() {
-    try {
-        this.logger.info('Arresto del NetworkManager...');
-        await this.node.stop();
-        this, this.peers.clear();
-        this.stats = {
-            peers: 0,
-            messageSent: 0,
-            messageReceived: 0,
-            enrollmentChannel: "auto",
+        try {
+            this.logger.info('Arresto del NetworkManager...');
+            await this.node.stop();
+            this, this.peers.clear();
+            this.stats = {
+                peers: 0,
+                messageSent: 0,
+                messageReceived: 0,
+                enrollmentChannel: "auto",
 
+            }
+            this.logger.info('NetworkManager arrestato con successo');
+        } catch (error) {
+            this.logger.error('Errore durante l\'arresto del NetworkManager:', error);
+            throw error;
         }
-        this.logger.info('NetworkManager arrestato con successo');
-    } catch (error) {
-        this.logger.error('Errore durante l\'arresto del NetworkManager:', error);
-        throw error;
     }
-}
 
     async start() {
-    try {
-        this.logger.info('AVVIO DEL NETWORK MANAGER LIGHT...');
+        try {
+            this.logger.info('AVVIO DEL NETWORK MANAGER LIGHT...');
 
-        let nodeInfo = await this.storage.loadNodeInfo();
+            let nodeInfo = await this.storage.loadNodeInfo();
 
-        if (nodeInfo && nodeInfo.nodeId) {
-            this.logger.info(`Caricate informazioni del nodo esistenti.....`);
-            this.nodeId = nodeInfo.nodeId;
+            if (nodeInfo && nodeInfo.nodeId) {
+                this.logger.info(`Caricate informazioni del nodo esistenti.....`);
+                this.nodeId = nodeInfo.nodeId;
 
 
-            if (nodeInfo.peerId) {
-                this.logger.info('PeerId trovato nelle informazioni salvate');
+                if (nodeInfo.peerId) {
+                    this.logger.info('PeerId trovato nelle informazioni salvate');
+                    this.peerId = await this.loadOrCreatePeerId();
+
+                }
+            } else {
+                this.logger.info('Nessuna informazione di storage trovata');
                 this.peerId = await this.loadOrCreatePeerId();
-
             }
-        } else {
-            this.logger.info('Nessuna informazione di storage trovata');
-            this.peerId = await this.loadOrCreatePeerId();
+
+            // Implementa il salvataggio delle informazioni
+            await this.storage.saveNodeInfo({
+                nodeId: this.nodeId,
+                peerId: {
+                    id: this.peerId.toString(),
+                    privKey: Buffer.from(this.peerId.privateKey).toString('base64'),
+                    pubKey: Buffer.from(this.peerId.publicKey).toString('base64')
+                }
+            });
+
+
+            this.node = await createLibp2p({
+                peerId: this.peerId,
+                addresses: {
+                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
+                    announce: ['/ip4/34.147.53.15/tcp/6001/'] // Annuncio pubblico,
+                },
+                transports: [
+                    tcp(),
+                    // webSockets(), da implementare
+                    // webRTC(), da implementare 
+                ],
+                connectionEncryption: [
+                    noise()
+                ],
+                streamMuxers: [
+                    mplex()
+                ],
+                peerDiscovery: [
+                    bootstrap({
+                        list: DEFAULTBOOTSTRAP_NODES, // empty for bootstrap itself
+                        interval: 60e3,
+                        enabled: false           // disabilita discovery su se stesso
+                    })
+                ],
+                dht: kadDHT({
+                    enabled: true,
+                    clientMode: false,
+                    randomWalk: {
+                        enabled: true,
+                        interval: 300e3,
+                        timeout: 30e3
+                    }
+                }),
+                protocols: [HelloProtocol()]
+            })
+
+            this.dht = this.node._dht;
+
+
+            this.setupHandlers();
+
+
+            await this.node.start();
+
+            this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
+
+            return true
+
+
+
+        } catch (error) {
+            this.logger.error("Errore durante l'avvio del NetworkManager:", error);
+            throw error;
+
         }
 
-        // Implementa il salvataggio delle informazioni
-        await this.storage.saveNodeInfo({
-            nodeId: this.nodeId,
-            peerId: {
-                id: this.peerId.toString(),
-                privKey: Buffer.from(this.peerId.privateKey).toString('base64'),
-                pubKey: Buffer.from(this.peerId.publicKey).toString('base64')
-            }
-        });
-
-
-        this.node = await createLibp2p({
-            peerId: this.peerId,
-            addresses: {
-                listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
-                announce: ['/ip4/34.147.53.15/tcp/6001/'] // Annuncio pubblico,
-            },
-            transports: [
-                tcp(),
-                // webSockets(), da implementare
-                // webRTC(), da implementare 
-            ],
-            connectionEncryption: [
-                noise()
-            ],
-            streamMuxers: [
-                mplex()
-            ],
-            peerDiscovery: [
-                bootstrap({
-                    list: DEFAULTBOOTSTRAP_NODES, // empty for bootstrap itself
-                    interval: 60e3,
-                    enabled: false           // disabilita discovery su se stesso
-                })
-            ],
-            dht: kadDHT({
-                enabled: true,
-                clientMode: false,
-                randomWalk: {
-                    enabled: true,
-                    interval: 300e3,
-                    timeout: 30e3
-                }
-            }),
-            protocols: [HelloProtocol()]
-        })
-
-
-        this.setupHandlers();
-
-
-        await this.node.start();
-
-        this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
-
-        return true
-
-
-
-    } catch (error) {
-        this.logger.error("Errore durante l'avvio del NetworkManager:", error);
-        throw error;
 
     }
-
-
-}
 
 }
