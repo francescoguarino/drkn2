@@ -11,12 +11,13 @@ import { tcp } from '@libp2p/tcp'
 import { noise } from '@libp2p/noise'
 //import { identify } from '@libp2p/identify'
 import { mplex } from '@libp2p/mplex'
-import { bootstrap } from '@libp2p/bootstrap'
+//import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
 import { kadDHT } from '@libp2p/kad-dht'
+import { bootstrap } from '@libp2p/bootstrap'
 
 import { HelloProtocol } from './protocols/Hello.js'
 
@@ -29,7 +30,7 @@ import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
 
-const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz'];  //SE STESSO è IL PRIMO !!!
+const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz'];
 
 export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
@@ -133,77 +134,76 @@ export class NetworkManager extends EventEmitter {
             const peer = evt.detail.id.toString();
             if (!this.peers.has(peer)) {
                 this.peers.add(peer);
-                this.logger.info(`🔍 Nuovo peer scoperto: ${peer}`);
+                this.logger.info(`Nuovo peer connesso: ${peer}`);
                 this.stats.peers = this.peers.size;
                 this.emit('peer:discovered', peer);
             }
         });
 
-        // Peer connect
-        this.node.addEventListener('peer:connect', (evt) => {
-            const connection = evt.detail;
-            const peer = connection.remotePeer.toString();
-            this.logger.warn(`✅ Peer connesso: ${peer}`);
+        this.node.addEventListener('peer:connect', async (evt) => {
+            const peer = evt.detail.toString();
+            this.logger.warn(`Peer connesso: ${peer}`);
         });
 
-        // Peer disconnect
-        this.node.addEventListener('peer:disconnect', (evt) => {
-            const connection = evt.detail;
-            const peer = connection.remotePeer.toString();
-            this.logger.warn(`❌ Peer disconnesso: ${peer}`);
-            this.peers.delete(peer);
-            this.stats.peers = this.peers.size;
-        });
-
-        // Protocol handler
         this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
-            const peerId = connection.remotePeer.toString();
-            this.logger.info(`📨 Ricevuto stream da ${peerId} sul protocollo /drakon/hello/1.0.0`);
+            const peerId = connection.remotePeer.toString()
+            this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
+            // Un solo loop sulla source
             for await (const packet of stream.source) {
-                const chunk = (
+                // Estrai il buffer puro in base al tipo di packet
+                const chunk =
                     packet instanceof Uint8Array
                         ? packet
-                        : packet?.data instanceof Uint8Array
+                        : packet && packet.data instanceof Uint8Array
                             ? packet.data
-                            : typeof packet?.subarray === 'function'
+                            : packet && typeof packet.subarray === 'function'
                                 ? packet.subarray()
                                 : null
-                );
 
                 if (!chunk) {
-                    this.logger.warn(`⚠️ Chunk non valido ricevuto da ${peerId}`);
-                    continue;
+                    this.logger.warn(`Ricevuto chunk non processabile (${packet}), skipping…`)
+                    continue
                 }
 
-                const incoming = uint8ArrayToString(chunk);
-                this.logger.info(`📥 Messaggio da ${peerId}: ${incoming}`);
-                this.stats.messageReceived++;
+                const incoming = uint8ArrayToString(chunk)
+                this.logger.info(`Ricevuto da ${peerId}: ${incoming}`)
+                this.stats.messageReceived++
 
-                const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`;
+                // Rispondi subito
+                const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`
                 await pipe(
                     [uint8ArrayFromString(reply)],
                     stream.sink
-                );
-
-                this.logger.info(`📤 Risposta inviata a ${peerId}`);
-                this.stats.messageSent++;
+                )
+                this.logger.info(`Risposta inviata a ${peerId}`)
+                this.stats.messageSent++
             }
-        });
+        })
 
-        // Log periodico DHT routing table
+
+
+
+        this.node.addEventListener('peer:disconnect', (evt) => {
+            const peer = evt.detail.toString();
+            this.logger.warn(`Peer disconnesso: ${peer}`);
+            this.peers.delete(peer);
+            this.stats.peers = this.peers.size;
+        }
+        );
+
+
+
         setInterval(() => {
-
-            if (!this.dht) this.logger.warn('⚠️ DHT non disponibile tra i componenti');
-            if (this.dht && this.dht.routingTable) {
+            if (this.dht?.routingTable) {
                 const size = this.dht.routingTable.size;
                 this.logger.info(`📈 DHT routing table size: ${size}`);
             } else {
-                this.logger.warn(`⚠️ Impossibile accedere alla DHT o routingTable`);
+                this.logger.warn(`⚠️ DHT o routingTable non disponibile`);
             }
-        }, 60000); // ogni 60s
-    }
+        }, 60000);
 
+    }
 
 
 
@@ -296,9 +296,7 @@ export class NetworkManager extends EventEmitter {
                 protocols: [HelloProtocol()]
             })
 
-            this.dht = this.node._dht;
-
-
+            this.dht = this.node.components?.dht;
             this.setupHandlers();
 
 
