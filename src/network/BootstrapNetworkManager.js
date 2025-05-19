@@ -248,7 +248,8 @@ export class NetworkManager extends EventEmitter {
             this.node = await createLibp2p({
                 peerId: this.peerId,
                 addresses: {
-                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`]
+                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
+                    announce: ['/ip4/34.147.53.15/tcp/6001/'] // Annuncio pubblico,
                 },
                 transports: [
                     tcp(),
@@ -261,16 +262,23 @@ export class NetworkManager extends EventEmitter {
                 streamMuxers: [
                     mplex()
                 ],
-                protocols: [
-                    HelloProtocol(),
-                ],
                 peerDiscovery: [
-                    // bootstrap({
-                    //     interval: 20000,
-                    //     enabled: true,
-                    //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
-                    // })
-                ]
+                    bootstrap({
+                        list: DEFAULT_BOOTSTRAP_NODES, // empty for bootstrap itself
+                        interval: 60e3,
+                        enabled: false           // disabilita discovery su se stesso
+                    })
+                ],
+                dht: kadDHT({
+                    enabled: true,
+                    clientMode: false,
+                    randomWalk: {
+                        enabled: true,
+                        interval: 300e3,
+                        timeout: 30e3
+                    }
+                }),
+                protocols: [HelloProtocol()]
             })
 
 
