@@ -16,6 +16,7 @@ import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
+import { kadDHT } from '@libp2p/kad-dht'
 
 import { HelloProtocol } from './protocols/Hello.js'
 
