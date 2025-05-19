@@ -277,7 +277,7 @@ setupHandlers() {
             ],
             peerDiscovery: [
                 bootstrap({
-                    list: this.config.bootstrapNodes, // empty for bootstrap itself
+                    list: DEFAULTBOOTSTRAP_NODES, // empty for bootstrap itself
                     interval: 60e3,
                     enabled: false           // disabilita discovery su se stesso
                 })
