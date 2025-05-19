@@ -276,7 +276,7 @@ export class NetworkManager extends EventEmitter {
             this.node = await createLibp2p({
                 peerId: this.peerId,
                 addresses: {
-                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
+                    listen: [`/ip4/0.0.0.0/tcp/6001`],
                     announce: ['/ip4/34.147.53.15/tcp/6001/'] // Annuncio pubblico,
                 },
                 transports: [
