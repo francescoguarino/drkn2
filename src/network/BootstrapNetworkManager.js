@@ -140,14 +140,14 @@ setupHandlers() {
     });
 
     // Peer connect
-    this.node.connectionManager.addEventListener('peer:connect', (evt) => {
+    this.node.addEventListener('peer:connect', (evt) => {
         const connection = evt.detail;
         const peer = connection.remotePeer.toString();
         this.logger.warn(`✅ Peer connesso: ${peer}`);
     });
 
     // Peer disconnect
-    this.node.connectionManager.addEventListener('peer:disconnect', (evt) => {
+    this.node.addEventListener('peer:disconnect', (evt) => {
         const connection = evt.detail;
         const peer = connection.remotePeer.toString();
         this.logger.warn(`❌ Peer disconnesso: ${peer}`);
