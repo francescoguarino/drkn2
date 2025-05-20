@@ -273,7 +273,7 @@ export class NetworkManager extends EventEmitter {
                     //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
                     // })
                 ],
-                contentRouters: [kadDHT()],
+
                 services: {
                     dht: kadDHT({
                             clientMode: true,
