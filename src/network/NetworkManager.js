@@ -274,12 +274,18 @@ export class NetworkManager extends EventEmitter {
                 streamMuxers: [
                     mplex()
                 ],
-                dht: kadDHT({
-                    enabled: true,
-                    clientMode: false,
-                    bootstrapPeers: DEFAULTBOOTSTRAP_NODES,
-                    randomWalk: { enabled: true, interval: 300e3, timeout: 30e3 }
-                }),
+                services: {
+                    dht: kadDHT({
+                        enabled: true,
+                        clientMode: false,
+                        bootstrapPeers: BOOTSTRAP_NODES,
+                        randomWalk: {
+                            enabled: true,
+                            interval: 300e3,
+                            timeout: 30e3
+                        }
+                    })
+                },
                 protocols: [
                     HelloProtocol()
                 ]
