@@ -278,12 +278,7 @@ export class NetworkManager extends EventEmitter {
                         list: this.config.bootstrapNodes
                     })
                 ],
-                contentRouters: [
-                    kadDHT()
-                ],
-                services: {
-                    dht: kadDHT()
-                },
+
                 protocols: [
                     HelloProtocol()
                 ]
