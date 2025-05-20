@@ -255,6 +255,9 @@ export class NetworkManager extends EventEmitter {
             });
 
 
+
+
+
             this.node = await createLibp2p({
                 peerId: this.peerId,
                 addresses: {
@@ -271,21 +274,11 @@ export class NetworkManager extends EventEmitter {
                 streamMuxers: [
                     mplex()
                 ],
-                peerDiscovery: [
-                    bootstrap({
-                        interval: 20000,
-                        enabled: true,
-                        list: this.config.bootstrapNodes
-                    })
-                ],
-                dht : kadDHT({
+                dht: kadDHT({
                     enabled: true,
-                    clientMode: false,         // nodo full DHT, non solo client
-                    randomWalk: {
-                        enabled: true,           // abilita random-walk periodico
-                        interval: 300e3,         // ogni 5 minuti
-                        timeout: 30e3            // timeout di ogni query
-                    }
+                    clientMode: false,
+                    bootstrapPeers: DEFAULTBOOTSTRAP_NODES,
+                    randomWalk: { enabled: true, interval: 300e3, timeout: 30e3 }
                 }),
                 protocols: [
                     HelloProtocol()

@@ -266,12 +266,9 @@ export class NetworkManager extends EventEmitter {
             this.kad = kadDHT({
                 enabled: true,
                 clientMode: false,
-                randomWalk: {
-                    enabled: true,
-                    interval: 300e3,
-                    timeout: 30e3
-                }
-            });
+                bootstrapPeers: DEFAULTBOOTSTRAP_NODES,  // include sé stesso o altri bootstrap
+                randomWalk: { enabled: true, interval: 300e3, timeout: 30e3 }
+            })
 
 
             this.node = await createLibp2p({
@@ -291,13 +288,14 @@ export class NetworkManager extends EventEmitter {
                 streamMuxers: [
                     mplex()
                 ],
-                peerDiscovery: [
-                    bootstrap({
-                        list: DEFAULTBOOTSTRAP_NODES, // empty for bootstrap itself
-                        interval: 60e3,
-                        enabled: false           // disabilita discovery su se stesso
-                    })
-                ],
+                // peerDiscovery: [
+                //     bootstrap({
+                //         list: DEFAULTBOOTSTRAP_NODES, // empty for bootstrap itself
+                //         interval: 60e3,
+                //         enabled: false           // disabilita discovery su se stesso
+                //     })
+                // ],
+                
                 dht: this.kad,
                 protocols: [HelloProtocol()]
 
@@ -313,6 +311,7 @@ export class NetworkManager extends EventEmitter {
 
 
             await this.node.start();
+            console.log('DHT bucket count:', this.node._dht.routingTable?.size)
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
