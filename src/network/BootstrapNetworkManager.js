@@ -52,8 +52,8 @@ export class NetworkManager extends EventEmitter {
 
 
     ma = multiaddr('/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz');
-    
-    
+
+
     /**
      * Carica un PeerId esistente o ne crea uno nuovo
      * @returns {Promise<PeerId>} - Oggetto PeerId
@@ -223,6 +223,70 @@ export class NetworkManager extends EventEmitter {
         }
     }
 
+
+        setupDHTMonitoring() {
+        const dht = this.node.services.dht
+        const rt = dht.routingTable
+
+        if (!rt) {
+            this.logger.error('Routing table non disponibile')
+            return
+        }
+
+        // Log iniziale dello stato
+        this.logRoutingTableStatus()
+
+        // Gestione eventi della routing table
+        rt.addEventListener('peer:added', (evt) => {
+            const peerId = evt.detail.toString()
+            this.logger.info(`📥 Peer aggiunto alla routing table: ${peerId}`)
+            this.logRoutingTableStatus()
+
+            // Verifica connessione attiva
+            this.node.getConnections(peerId).then(connections => {
+                if (connections.length === 0) {
+                    this.logger.warn(`Peer ${peerId} in routing table ma nessuna connessione attiva`)
+                }
+            })
+        })
+
+        rt.addEventListener('peer:removed', (evt) => {
+            const peerId = evt.detail.toString()
+            this.logger.info(`📤 Peer rimosso dalla routing table: ${peerId}`)
+            this.logRoutingTableStatus()
+        })
+
+        // Monitoraggio periodico
+        this.dhtInterval = setInterval(() => {
+            this.logRoutingTableStatus()
+        }, 30000)
+    }
+
+    // Aggiungi questo metodo di utilità
+    logRoutingTableStatus() {
+        const rt = this.node.services.dht.routingTable;
+        // Check if routing table or buckets are unavailable
+        if (!rt || !rt.buckets) {
+            this.logger.warn('Routing table or buckets non disponibili');
+            return;
+        }
+
+        const status = {
+            totalPeers: rt.size,
+            buckets: rt.buckets.length,
+            bucketsDetails: rt.buckets.map((bucket, index) => ({
+                bucketIndex: index,
+                peersCount: bucket.peers.length,
+                lastActivity: bucket.lastActivity,
+                head: bucket.head?.id.toString() || 'null',
+                tail: bucket.tail?.id.toString() || 'null'
+            })),
+            kadProtocol: this.node.services.dht.lan.protocol
+        };
+
+        this.logger.info('Stato Routing Table:', JSON.stringify(status, null, 2));
+    }
+
     async start() {
         try {
             this.logger.info('AVVIO DEL NETWORK MANAGER LIGHT...');
@@ -278,17 +342,42 @@ export class NetworkManager extends EventEmitter {
                         list: this.config.bootstrapNodes
                     })
                 ],
-
                 protocols: [
                     HelloProtocol()
-                ]
+                ],
+                services: {
+                    dht: kadDHT({
+                        clientMode: false,
+                        protocolPrefix: '/drakon-dht', // Aggiungi prefisso personalizzato
+                        maxInboundStreams: 32,
+                        maxOutboundStreams: 64,
+                        // Abilita esplicitamente la modalità server DHT
+                        kBucketSize: 20,
+                        clientMode: false
+                    })
+                }
 
             })
 
             this.setupHandlers();
+
+
             await this.node.start();
 
-            
+
+             this.setupDHTMonitoring() // <-- Aggiungi questa linea
+
+            // Esegui una query di esempio per popolare la DHT
+            setTimeout(async () => {
+                try {
+                    await this.node.services.dht.get(uint8ArrayFromString('example-key'))
+                    this.logger.info('Query DHT eseguita con successo')
+                } catch (error) {
+                    this.logger.error('Errore query DHT:', error)
+                }
+            }, 5000)
+
+
             return true
         } catch (error) {
             this.logger.error("Errore durante l'avvio del NetworkManager:", error);
