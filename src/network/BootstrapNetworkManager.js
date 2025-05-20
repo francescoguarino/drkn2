@@ -195,7 +195,7 @@ export class NetworkManager extends EventEmitter {
 
 
         setInterval(() => {
-            const dht = this.node._dht; // o this.node.contentRouting (dipende dalla tua versione)
+            const dht = this.node.services?.dht // o this.node.contentRouting (dipende dalla tua versione)
 
             if (dht?.routingTable) {
                 const size = dht.routingTable.size;
@@ -295,8 +295,18 @@ export class NetworkManager extends EventEmitter {
                 //         enabled: false           // disabilita discovery su se stesso
                 //     })
                 // ],
-                
-                dht: this.kad,
+                services: {
+                    dht: kadDHT({
+                        enabled: true,
+                        clientMode: false,
+                        bootstrapPeers: BOOTSTRAP_NODES,
+                        randomWalk: {
+                            enabled: true,
+                            interval: 300e3,
+                            timeout: 30e3
+                        }
+                    })
+                },
                 protocols: [HelloProtocol()]
 
 
@@ -311,7 +321,7 @@ export class NetworkManager extends EventEmitter {
 
 
             await this.node.start();
-           // console.log('DHT bucket count:', this.node._dht.routingTable?.size)
+            // console.log('DHT bucket count:', this.node._dht.routingTable?.size)
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
