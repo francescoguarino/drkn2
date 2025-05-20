@@ -275,7 +275,10 @@ export class NetworkManager extends EventEmitter {
                 ],
                 contentRouters: [kadDHT()],
                 services: {
-                    dht: kadDHT()
+                    dht: kadDHT({
+                            clientMode: true,
+                            
+                    })
                 },
             })
 
