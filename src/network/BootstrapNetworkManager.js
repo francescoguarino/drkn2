@@ -15,7 +15,8 @@ import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
-
+import { kadDHT } from '@libp2p/kad-dht'
+import { createFromJSON } from '@libp2p/peer-id-factory'
 
 //Protocls
 import { HelloProtocol } from './protocols/Hello.js'
@@ -278,6 +279,12 @@ export class NetworkManager extends EventEmitter {
                         list: this.config.bootstrapNodes
                     })
                 ],
+                contentRouters: [
+                    kadDHT()
+                ],
+                services: {
+                    dht: kadDHT()
+                },
                 protocols: [
                     HelloProtocol()
                 ]
@@ -287,6 +294,26 @@ export class NetworkManager extends EventEmitter {
             this.setupHandlers();
             await this.node.start();
 
+
+                        const rt = this.node.services.dht.routingTable;
+
+            if (rt?.buckets) {
+                console.log('Bucket count:', rt.buckets.length);
+                console.log('Total peers in routing table:', rt.size);
+            } else {
+                console.log('Routing table buckets non disponibili');
+            }
+
+
+            rt.addEventListener('peer:added', (evt) => {
+                console.log('Peer aggiunto:', evt.detail)       // evt.detail è il PeerId
+                console.log('Nuova size:', rt.size)
+            })
+
+            rt.addEventListener('peer:removed', (evt) => {
+                console.log('Peer rimosso:', evt.detail)
+                console.log('Nuova size:', rt.size)
+            })
             return true
         } catch (error) {
             this.logger.error("Errore durante l'avvio del NetworkManager:", error);
