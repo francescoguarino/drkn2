@@ -16,7 +16,7 @@ import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
-
+import { kadDHT } from '@libp2p/kad-dht'
 
 //Protocls
 import { HelloProtocol } from './protocols/Hello.js'
@@ -53,8 +53,8 @@ export class NetworkManager extends EventEmitter {
 
 
     ma = multiaddr('/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz');
-    
-    
+
+
     /**
      * Carica un PeerId esistente o ne crea uno nuovo
      * @returns {Promise<PeerId>} - Oggetto PeerId
@@ -142,7 +142,6 @@ export class NetworkManager extends EventEmitter {
             const addrs = evt.detail.multiaddrs  // ← array di Multiaddr
 
             for (const ma of addrs) {
-                this.logger.info(`Scoperto peer ${peerIdStr} su ${ma.toString()}: provo a connettermi…`)
                 try {
                     // <-- dial con Multiaddr valido
                     await this.node.dial(ma)
@@ -279,6 +278,15 @@ export class NetworkManager extends EventEmitter {
                         list: this.config.bootstrapNodes
                     })
                 ],
+                dht : kadDHT({
+                    enabled: true,
+                    clientMode: false,         // nodo full DHT, non solo client
+                    randomWalk: {
+                        enabled: true,           // abilita random-walk periodico
+                        interval: 300e3,         // ogni 5 minuti
+                        timeout: 30e3            // timeout di ogni query
+                    }
+                }),
                 protocols: [
                     HelloProtocol()
                 ]
