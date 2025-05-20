@@ -195,14 +195,15 @@ export class NetworkManager extends EventEmitter {
 
 
         setInterval(() => {
-            if (this.kad?.routingTable) {
-                const size = this.kad.routingTable.size;
+            const dht = this.node._dht; // o this.node.contentRouting (dipende dalla tua versione)
+
+            if (dht?.routingTable) {
+                const size = dht.routingTable.size;
                 this.logger.info(`📈 DHT routing table size: ${size}`);
             } else {
                 this.logger.warn(`⚠️ DHT o routingTable non disponibile`);
             }
         }, 60000);
-
     }
 
 
