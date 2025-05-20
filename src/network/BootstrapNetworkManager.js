@@ -311,7 +311,7 @@ export class NetworkManager extends EventEmitter {
 
 
             await this.node.start();
-            console.log('DHT bucket count:', this.node._dht.routingTable?.size)
+           // console.log('DHT bucket count:', this.node._dht.routingTable?.size)
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
