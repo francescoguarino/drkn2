@@ -30,7 +30,7 @@ import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
 
-const DEFAULTBOOTSTRAP_NODES = [];
+const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz'];
 
 export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
