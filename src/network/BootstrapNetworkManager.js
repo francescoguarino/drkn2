@@ -16,6 +16,8 @@ import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
+import { kadDHT } from '@libp2p/kad-dht'
+import { bootstrap } from '@libp2p/bootstrap'
 
 import { HelloProtocol } from './protocols/Hello.js'
 
@@ -270,7 +272,11 @@ export class NetworkManager extends EventEmitter {
                     //     enabled: true,
                     //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
                     // })
-                ]
+                ],
+                contentRouters: [kadDHT()],
+                services: {
+                    dht: kadDHT()
+                },
             })
 
 
@@ -280,6 +286,23 @@ export class NetworkManager extends EventEmitter {
             await this.node.start();
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
+
+
+            // Accedi al servizio DHT e ne leggi la routing table:
+            const rt = this.node.services.dht.routingTable
+            console.log('Bucket count:', rt.buckets.length)
+            console.log('Total peers in routing table:', rt.size)
+
+
+            rt.addEventListener('peer:added', (evt) => {
+                console.log('Peer aggiunto:', evt.detail)       // evt.detail è il PeerId
+                console.log('Nuova size:', rt.size)
+            })
+
+            rt.addEventListener('peer:removed', (evt) => {
+                console.log('Peer rimosso:', evt.detail)
+                console.log('Nuova size:', rt.size)
+            })
 
             return true
 
