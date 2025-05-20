@@ -1,6 +1,7 @@
 
 // PeerId
 import { createEd25519PeerId as createNewPeerId, createFromPrivKey } from '@libp2p/peer-id-factory'
+import { peerIdFromKeys } from '@libp2p/peer-id'
 
 // Decodifica chiave privata
 import { unmarshalPrivateKey } from '@libp2p/crypto/keys'
@@ -82,8 +83,10 @@ export class NetworkManager extends EventEmitter {
                             //   this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
 
                             // Decodifica la chiave privata e crea il PeerId
-                            const privKey = await unmarshalPrivateKey(privKeyBuffer);
-                            const peerId = await createFromPrivKey(privKey);
+
+
+                            const pubKeyBuffer = Buffer.from(nodeInfo.peerId.pubKey, 'base64');
+                            const peerId = await peerIdFromKeys(pubKeyBuffer, privKeyBuffer);
 
                             this.logger.info(`PeerId creato con successo: ${peerId.toString()}`);
 
