@@ -16,8 +16,6 @@ import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
-import { kadDHT } from '@libp2p/kad-dht'
-import { bootstrap } from '@libp2p/bootstrap'
 
 import { HelloProtocol } from './protocols/Hello.js'
 
@@ -30,7 +28,7 @@ import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
 
-const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz'];
+const DEFAULTBOOTSTRAP_NODES = [];
 
 export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
@@ -194,21 +192,7 @@ export class NetworkManager extends EventEmitter {
 
 
 
-        setInterval(() => {
-            const dht = this.node.services?.dht // o this.node.contentRouting (dipende dalla tua versione)
-
-            if (dht?.routingTable) {
-                const size = dht.routingTable.size;
-                this.logger.info(`📈 DHT routing table size: ${size}`);
-            } else {
-                this.logger.warn(`⚠️ DHT o routingTable non disponibile`);
-            }
-        }, 60000);
     }
-
-
-
-
 
     async stop() {
         try {
@@ -218,8 +202,6 @@ export class NetworkManager extends EventEmitter {
             this.stats = {
                 peers: 0,
                 messageSent: 0,
-                messageReceived: 0,
-                removedpeer: 0,
                 messageReceived: 0,
                 enrollmentChannel: "auto",
 
@@ -263,19 +245,10 @@ export class NetworkManager extends EventEmitter {
             });
 
 
-            this.kad = kadDHT({
-                enabled: true,
-                clientMode: false,
-                bootstrapPeers: DEFAULTBOOTSTRAP_NODES,  // include sé stesso o altri bootstrap
-                randomWalk: { enabled: true, interval: 300e3, timeout: 30e3 }
-            })
-
-
             this.node = await createLibp2p({
                 peerId: this.peerId,
                 addresses: {
-                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
-                    announce: ['/ip4/34.147.53.15/tcp/6001/'] // Annuncio pubblico,
+                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`]
                 },
                 transports: [
                     tcp(),
@@ -288,40 +261,23 @@ export class NetworkManager extends EventEmitter {
                 streamMuxers: [
                     mplex()
                 ],
-                // peerDiscovery: [
-                //     bootstrap({
-                //         list: DEFAULTBOOTSTRAP_NODES, // empty for bootstrap itself
-                //         interval: 60e3,
-                //         enabled: false           // disabilita discovery su se stesso
-                //     })
-                // ],
-                services: {
-                    dht: kadDHT({
-                        enabled: true,
-                        clientMode: false,
-                        bootstrapPeers: BOOTSTRAP_NODES,
-                        randomWalk: {
-                            enabled: true,
-                            interval: 300e3,
-                            timeout: 30e3
-                        }
-                    })
-                },
-                protocols: [HelloProtocol()]
-
-
-
+                protocols: [
+                    HelloProtocol(),
+                ],
+                peerDiscovery: [
+                    // bootstrap({
+                    //     interval: 20000,
+                    //     enabled: true,
+                    //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
+                    // })
+                ]
             })
-
-            this.dht = this.kad;
-
 
 
             this.setupHandlers();
 
 
             await this.node.start();
-            // console.log('DHT bucket count:', this.node._dht.routingTable?.size)
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
