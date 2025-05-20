@@ -1,4 +1,3 @@
-
 // PeerId
 import { createEd25519PeerId as createNewPeerId, createFromPrivKey } from '@libp2p/peer-id-factory'
 
@@ -11,21 +10,22 @@ import { tcp } from '@libp2p/tcp'
 import { noise } from '@libp2p/noise'
 //import { identify } from '@libp2p/identify'
 import { mplex } from '@libp2p/mplex'
-//import { bootstrap } from '@libp2p/bootstrap'
+import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
-import { kadDHT } from '@libp2p/kad-dht'
-import { bootstrap } from '@libp2p/bootstrap'
 
+
+//Protocls
 import { HelloProtocol } from './protocols/Hello.js'
 
 // Utils per messaggi
 import { fromString as uint8ArrayFromString, toString as uint8ArrayToString } from 'uint8arrays'
 import { EventEmitter } from 'events'
+import { peerIdFromString } from '@libp2p/peer-id';
 
-
+//Utils
 import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
@@ -50,6 +50,10 @@ export class NetworkManager extends EventEmitter {
         }
     }
 
+
+    ma = multiaddr('/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz');
+    
+    
     /**
      * Carica un PeerId esistente o ne crea uno nuovo
      * @returns {Promise<PeerId>} - Oggetto PeerId
@@ -79,7 +83,7 @@ export class NetworkManager extends EventEmitter {
                             const privKeyStr = nodeInfo.peerId.privKey;
                             const privKeyBuffer = Buffer.from(privKeyStr, 'base64');
 
-                            //   this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
+                            // this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
 
                             // Decodifica la chiave privata e crea il PeerId
                             const privKey = await unmarshalPrivateKey(privKeyBuffer);
@@ -129,70 +133,74 @@ export class NetworkManager extends EventEmitter {
     }
 
     setupHandlers() {
-        // Peer discovery
-        this.node.addEventListener('peer:discovery', (evt) => {
-            const peer = evt.detail.id.toString();
-            if (!this.peers.has(peer)) {
-                this.peers.add(peer);
-                this.logger.info(`Nuovo peer connesso: ${peer}`);
-                this.stats.peers = this.peers.size;
-                this.emit('peer:discovered', peer);
-            }
-        });
 
-        this.node.addEventListener('peer:connect', async (evt) => {
-            const peer = evt.detail.toString();
-            this.logger.warn(`Peer connesso: ${peer}`);
-        });
 
-        this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
-            const peerId = connection.remotePeer.toString()
-            this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
+        // In client's setupHandlers():
+        this.node.addEventListener('peer:discovery', async evt => {
+            const peerIdStr = evt.detail.id.toString()
+            const addrs = evt.detail.multiaddrs  // ← array di Multiaddr
 
-            // Un solo loop sulla source
-            for await (const packet of stream.source) {
-                // Estrai il buffer puro in base al tipo di packet
-                const chunk =
-                    packet instanceof Uint8Array
-                        ? packet
-                        : packet && packet.data instanceof Uint8Array
-                            ? packet.data
-                            : packet && typeof packet.subarray === 'function'
-                                ? packet.subarray()
-                                : null
-
-                if (!chunk) {
-                    this.logger.warn(`Ricevuto chunk non processabile (${packet}), skipping…`)
-                    continue
+            for (const ma of addrs) {
+                this.logger.info(`Scoperto peer ${peerIdStr} su ${ma.toString()}: provo a connettermi…`)
+                try {
+                    // <-- dial con Multiaddr valido
+                    await this.node.dial(ma)
+                    this.logger.info(`Dial riuscito su ${ma.toString()}`)
+                    break
+                } catch (err) {
+                    this.logger.warn(`Dial fallito su ${ma.toString()}: ${err.message}`)
                 }
+            }
+        })
 
-                const incoming = uint8ArrayToString(chunk)
-                this.logger.info(`Ricevuto da ${peerId}: ${incoming}`)
-                this.stats.messageReceived++
 
-                // Rispondi subito
-                const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`
+        this.node.addEventListener('peer:connect', async evt => {
+            const peerIdStr = evt.detail.toString()
+            const peerIdObj = peerIdFromString(peerIdStr)
+            this.logger.info(`Connessione stabilita con ${peerIdStr}`)
+
+            try {
+                const stream = await this.node.dialProtocol(peerIdObj, '/drakon/hello/1.0.0')
+
+                // invio
                 await pipe(
-                    [uint8ArrayFromString(reply)],
+                    [uint8ArrayFromString('Ciao dal Client!')],
                     stream.sink
                 )
-                this.logger.info(`Risposta inviata a ${peerId}`)
-                this.stats.messageSent++
+                this.logger.info('Messaggio inviato, in attesa di risposta…')
+
+                // ricezione e decoding
+                for await (const packet of stream.source) {
+                    const chunk =
+                        packet instanceof Uint8Array
+                            ? packet
+                            : packet && packet.data instanceof Uint8Array
+                                ? packet.data
+                                : packet && typeof packet.subarray === 'function'
+                                    ? packet.subarray()
+                                    : null
+
+                    if (!chunk) {
+                        this.logger.warn(`Skipping invalid packet: ${packet}`)
+                        continue
+                    }
+
+                    const incoming = uint8ArrayToString(chunk)
+                    this.logger.info(`Ricevuto risposta: ${incoming}`)
+                    break
+                }
+            } catch (err) {
+                this.logger.error(`Errore nello stream con ${peerIdStr}: ${err.message}`)
             }
         })
 
 
 
-
-        this.node.addEventListener('peer:disconnect', (evt) => {
+        this.node.addEventListener('peer:disconnect', async (evt) => {
             const peer = evt.detail.toString();
-            this.logger.warn(`Peer disconnesso: ${peer}`);
-            this.peers.delete(peer);
-            this.stats.peers = this.peers.size;
+            this.logger.info(`Peer disconnesso: ${peer}`);
         }
         );
-
-
 
     }
 
@@ -263,51 +271,23 @@ export class NetworkManager extends EventEmitter {
                 streamMuxers: [
                     mplex()
                 ],
-                protocols: [
-                    HelloProtocol(),
-                ],
                 peerDiscovery: [
-                    // bootstrap({
-                    //     interval: 20000,
-                    //     enabled: true,
-                    //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
-                    // })
+                    bootstrap({
+                        interval: 20000,
+                        enabled: true,
+                        list: this.config.bootstrapNodes
+                    })
                 ],
-                contentRouters: [kadDHT()],
-                services: {
+                protocols: [
+                    HelloProtocol()
+                ]
 
-                },
             })
-
 
             this.setupHandlers();
-
-
             await this.node.start();
 
-            this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
-
-
-            // Accedi al servizio DHT e ne leggi la routing table:
-            const rt = this.node.services.dht.routingTable
-            console.log('Bucket count:', rt.buckets.length)
-            console.log('Total peers in routing table:', rt.size)
-
-
-            rt.addEventListener('peer:added', (evt) => {
-                console.log('Peer aggiunto:', evt.detail)       // evt.detail è il PeerId
-                console.log('Nuova size:', rt.size)
-            })
-
-            rt.addEventListener('peer:removed', (evt) => {
-                console.log('Peer rimosso:', evt.detail)
-                console.log('Nuova size:', rt.size)
-            })
-
             return true
-
-
-
         } catch (error) {
             this.logger.error("Errore durante l'avvio del NetworkManager:", error);
             throw error;
