@@ -292,7 +292,8 @@ export class NetworkManager extends EventEmitter {
                         maxOutboundStreams: 64,
                         // Abilita esplicitamente la modalità server DHT
                         kBucketSize: 20,
-                        clientMode: false
+                        clientMode: false,
+                        randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 }
                     })
                 }
 
