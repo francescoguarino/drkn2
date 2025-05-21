@@ -180,12 +180,18 @@ export class NetworkManager extends EventEmitter {
             }
 
             try {
-                // Lookup Kademlia che popola i bucket
+                // 1️⃣ Metodo “low-level”: inserisce subito il peer nella routing table
+                this.node.services.dht.routingTable.add(peerId)
+                this.logger.info(`RoutingTable.add(${peerId}) eseguito`)
+
+                // 2️⃣ (opzionale) Per completezza, fai anche un lookup Kademlia:
                 await this.node.services.dht.findPeer(peerId)
-                this.logger.info(`findPeer(${peerId}) completato: routing table aggiornata`)
-                this.logRoutingTableStatus()  // vedi subito i cambiamenti
+                this.logger.info(`findPeer(${peerId}) completato`)
+
+                // Vedi subito lo stato
+                this.logRoutingTableStatus()
             } catch (err) {
-                this.logger.error(`findPeer fallito per ${peerId}: ${err.message}`)
+                this.logger.error(`Errore aggiungendo ${peerId} alla DHT: ${err.message}`)
             }
         })
 
@@ -261,7 +267,8 @@ export class NetworkManager extends EventEmitter {
             this.node = await createLibp2p({
                 peerId: this.peerId,
                 addresses: {
-                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`]
+                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
+
                 },
                 transports: [
                     tcp(),
