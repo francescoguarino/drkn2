@@ -293,7 +293,7 @@ export class NetworkManager extends EventEmitter {
                      bootstrap({
                          interval: 20000,
                          enabled: true,
-                         list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
+                         list: DEFAULTBOOTSTRAP_NODES // Ensure this includes its own multiaddr
                      })
                 ],
                 services: {
