@@ -181,11 +181,11 @@ export class NetworkManager extends EventEmitter {
 
             try {
                 // Lookup Kademlia che popola i bucket
-                await this.node.services.dht.findPeer(peerIdStr)
-                this.logger.info(`findPeer(${peerIdStr}) completato: routing table aggiornata`)
+                await this.node.services.dht.findPeer(peerId)
+                this.logger.info(`findPeer(${peerId}) completato: routing table aggiornata`)
                 this.logRoutingTableStatus()  // vedi subito i cambiamenti
             } catch (err) {
-                this.logger.error(`findPeer fallito per ${peerIdStr}: ${err.message}`)
+                this.logger.error(`findPeer fallito per ${peerId}: ${err.message}`)
             }
         })
 
