@@ -410,26 +410,12 @@ export class NetworkManager extends EventEmitter {
 
     logRoutingTableStatus() {
         const rt = this.node.services.dht.routingTable;
-        // Check if routing table or buckets are unavailable
-        if (!rt || !rt.buckets) {
-            this.logger.warn('Routing table or buckets non disponibili');
+        if (!rt) {
+            this.logger.warn('Routing table non disponibile');
             return;
         }
-
-        const status = {
-            totalPeers: rt.size,
-            buckets: rt.buckets.length,
-            bucketsDetails: rt.buckets.map((bucket, index) => ({
-                bucketIndex: index,
-                peersCount: bucket.peers.length,
-                lastActivity: bucket.lastActivity,
-                head: bucket.head?.id.toString() || 'null',
-                tail: bucket.tail?.id.toString() || 'null'
-            })),
-            kadProtocol: this.node.services.dht.lan.protocol
-        };
-
-        this.logger.info('Stato Routing Table:', JSON.stringify(status, null, 2));
+        const totalPeers = rt.size;
+        this.logger.info(`Stato DHT: ${totalPeers} peer in routing table`);
     }
 
 
