@@ -159,8 +159,11 @@ export class NetworkManager extends EventEmitter {
             const peerIdObj = peerIdFromString(peerIdStr)
             this.logger.info(`Connessione stabilita con ${peerIdStr}`)
 
+
+            let stream
             try {
-                const stream = await this.node.dialProtocol(peerIdObj, '/drakon/hello/1.0.0')
+                stream = await this.node.newStream(peerIdObj, '/hello/1.0.0')
+
 
                 // invio
                 await pipe(
@@ -191,6 +194,16 @@ export class NetworkManager extends EventEmitter {
                 }
             } catch (err) {
                 this.logger.error(`Errore nello stream con ${peerIdStr}: ${err.message}`)
+            } finally {
+                if (stream && typeof stream.close === 'function') {
+                    try {
+                        // se il metodo è async
+                        const res = stream.close()
+                        if (res instanceof Promise) await res
+                    } catch (ce) {
+                        this.logger.warn(`Errore chiudendo lo stream: ${ce.message}`)
+                    }
+                }
             }
         })
 
@@ -369,7 +382,7 @@ export class NetworkManager extends EventEmitter {
             await this.node.start();
 
 
-             this.setupDHTMonitoring() // <-- Aggiungi questa linea
+            this.setupDHTMonitoring() // <-- Aggiungi questa linea
 
             // Esegui una query di esempio per popolare la DHT
             setTimeout(async () => {
