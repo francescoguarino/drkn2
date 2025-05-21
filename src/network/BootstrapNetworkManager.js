@@ -152,7 +152,7 @@ export class NetworkManager extends EventEmitter {
             const peerIdObj = connection.remotePeer
             this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
-            this.peers.add(peerId)
+            
 
 
             // Un solo loop sulla source
@@ -188,7 +188,6 @@ export class NetworkManager extends EventEmitter {
 
             try {
 
-                peerIdObj.toMultihash = () => peerIdObj.multihash
 
                 try {
                     await this.node.services.dht.routingTable.add(peerIdObj)
@@ -283,7 +282,6 @@ export class NetworkManager extends EventEmitter {
             });
 
             this.peerId.privKey = this.peerId.privateKey
-            this.peerId.toMultihash = () => this.peerId.multihash
 
 
             this.node = await createLibp2p({
