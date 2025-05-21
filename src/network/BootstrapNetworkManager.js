@@ -190,7 +190,7 @@ export class NetworkManager extends EventEmitter {
                 this.logger.info(`RoutingTable.add(${peerId}) eseguito`)
 
                 // 2️⃣ (opzionale) Per completezza, fai anche un lookup Kademlia:
-                await this.node.services.dht.findPeer(peerIdd)
+                await this.node.services.dht.findPeer(peerId)
                 this.logger.info(`findPeer(${peerId}) completato`)
 
                 // Vedi subito lo stato
