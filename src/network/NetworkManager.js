@@ -138,7 +138,7 @@ export class NetworkManager extends EventEmitter {
     setupHandlers() {
 
 
-        // In client's setupHandlers():
+        // Gestione eventi per la connessione a un peer:
         this.node.addEventListener('peer:discovery', async evt => {
             const peerIdStr = evt.detail.id.toString()
             const addrs = evt.detail.multiaddrs  // ← array di Multiaddr
@@ -291,8 +291,9 @@ export class NetworkManager extends EventEmitter {
                         maxOutboundStreams: 64,
                         // Abilita esplicitamente la modalità server DHT
                         kBucketSize: 20,
-                        clientMode: false,
-                        randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 }
+                        randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 },
+                        protocolPrefix: '/drakon/dht/1.0.0',
+
                     })
                 }
 
@@ -325,7 +326,7 @@ export class NetworkManager extends EventEmitter {
     }
 
 
-        setupDHTMonitoring() {
+    setupDHTMonitoring() {
         const dht = this.node.services.dht
         const rt = dht.routingTable
 

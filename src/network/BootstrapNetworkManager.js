@@ -149,6 +149,9 @@ export class NetworkManager extends EventEmitter {
             const peerIdObj = connection.remotePeer
             this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
+            this.peers.add(peerId)
+
+
             // Un solo loop sulla source
             for await (const packet of stream.source) {
                 // Estrai il buffer puro in base al tipo di packet
@@ -181,17 +184,24 @@ export class NetworkManager extends EventEmitter {
             }
 
             try {
-                // 1️⃣ Metodo “low-level”: inserisce subito il peer nella routing table
 
                 peerIdObj.toMultihash = () => peerIdObj.multihash
-                    +
 
-                    this.node.services.dht.routingTable.add(peerIdObj)
-                this.logger.info(`RoutingTable.add(${peerId}) eseguito`)
+                try {
+                    await this.node.services.dht.routingTable.add(peerIdObj)
+                    this.logger.info(`✅ Peer ${peerId} aggiunto alla routing table`)
+                } catch (err) {
+                    this.logger.error(`❌ Impossibile aggiungere ${peerId} alla routing table: ${err.message}`)
+                }
 
-                // 2️⃣ (opzionale) Per completezza, fai anche un lookup Kademlia:
-                await this.node.services.dht.findPeer(peerId)
-                this.logger.info(`findPeer(${peerId}) completato`)
+
+                try {
+                    await this.node.services.dht.findPeer(peerId)
+                    this.logger.info(`findPeer(${peerId}) completato`)
+                } catch (err) {
+                    this.logger.error(`❌ Impossibile aggiungere ....findPeer....(${peerId}) fallito: ${err.message}`)
+                }
+
 
                 // Vedi subito lo stato
                 this.logRoutingTableStatus()
@@ -305,7 +315,9 @@ export class NetworkManager extends EventEmitter {
                         maxOutboundStreams: 64,
                         // Abilita esplicitamente la modalità server DHT
                         kBucketSize: 20,
-                        clientMode: false
+                        clientMode: false,
+                        allowQueryWithZeroPeers: true,
+                        protocolPrefix: '/drakon/dht/1.0.0',
                     })
                 }
             })
@@ -317,7 +329,7 @@ export class NetworkManager extends EventEmitter {
             await this.node.start();
             await this.node.services.dht.start()
 
-            this.setupDHTMonitoring() // <-- Aggiungi questa linea
+            this.setupDHTMonitoring()
 
             // Esegui una query di esempio per popolare la DHT
             setTimeout(async () => {
@@ -380,7 +392,7 @@ export class NetworkManager extends EventEmitter {
         // Monitoraggio periodico
         this.dhtInterval = setInterval(() => {
             this.logRoutingTableStatus()
-        }, 30000)
+        }, 3000)
     }
 
     logRoutingTableStatus() {
