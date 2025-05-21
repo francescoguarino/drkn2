@@ -346,7 +346,7 @@ export class NetworkManager extends EventEmitter {
                     })
                 ],
                 protocols: [HelloProtocol()],
-                services: { // <-- Corregge il typo "sservices"
+                services: { 
                     dht: kadDHT({
                         clientMode: false,
                         protocolPrefix: '/drakon-dht', // Aggiungi prefisso personalizzato

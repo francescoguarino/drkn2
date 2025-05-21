@@ -224,7 +224,7 @@ export class NetworkManager extends EventEmitter {
     }
 
 
-        setupDHTMonitoring() {
+    setupDHTMonitoring() {
         const dht = this.node.services.dht
         const rt = dht.routingTable
 
@@ -262,7 +262,6 @@ export class NetworkManager extends EventEmitter {
         }, 30000)
     }
 
-    // Aggiungi questo metodo di utilità
     logRoutingTableStatus() {
         const rt = this.node.services.dht.routingTable;
         // Check if routing table or buckets are unavailable
