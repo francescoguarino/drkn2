@@ -293,7 +293,7 @@ export class NetworkManager extends EventEmitter {
                         kBucketSize: 20,
                         randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 },
                         protocolPrefix: '/drakon/dht/1.0.0',
-
+                        allowQueryWithZeroPeers: true,
                     })
                 },
                 identify: identify()
@@ -328,8 +328,8 @@ export class NetworkManager extends EventEmitter {
 
 
     setupDHTMonitoring() {
-        const dht = this.node.services.dht
-        const rt = dht.routingTable
+        const rt = this.node.services.dht.routingTable;
+
 
         if (!rt) {
             this.logger.error('Routing table non disponibile')
@@ -365,28 +365,14 @@ export class NetworkManager extends EventEmitter {
         }, 30000)
     }
 
-    logRoutingTableStatus() {
+       logRoutingTableStatus() {
         const rt = this.node.services.dht.routingTable;
-        // Check if routing table or buckets are unavailable
-        if (!rt || !rt.buckets) {
-            this.logger.warn('Routing table or buckets non disponibili');
+        if (!rt) {
+            this.logger.warn('Routing table non disponibile');
             return;
         }
-
-        const status = {
-            totalPeers: rt.size,
-            buckets: rt.buckets.length,
-            bucketsDetails: rt.buckets.map((bucket, index) => ({
-                bucketIndex: index,
-                peersCount: bucket.peers.length,
-                lastActivity: bucket.lastActivity,
-                head: bucket.head?.id.toString() || 'null',
-                tail: bucket.tail?.id.toString() || 'null'
-            })),
-            kadProtocol: this.node.services.dht.lan.protocol
-        };
-
-        this.logger.info('Stato Routing Table:', JSON.stringify(status, null, 2));
+        const totalPeers = rt.size;
+        this.logger.info(`Stato DHT: ${totalPeers} peer in routing table`);
     }
 
 }
