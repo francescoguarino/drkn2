@@ -146,6 +146,7 @@ export class NetworkManager extends EventEmitter {
 
         this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
             const peerId = connection.remotePeer.toString()
+            const peerIdd = connection.remotePeer
             this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
             // Un solo loop sulla source
@@ -181,11 +182,11 @@ export class NetworkManager extends EventEmitter {
 
             try {
                 // 1️⃣ Metodo “low-level”: inserisce subito il peer nella routing table
-                this.node.services.dht.routingTable.add(peerId)
+                this.node.services.dht.routingTable.add(peerIdd)
                 this.logger.info(`RoutingTable.add(${peerId}) eseguito`)
 
                 // 2️⃣ (opzionale) Per completezza, fai anche un lookup Kademlia:
-                await this.node.services.dht.findPeer(peerId)
+                await this.node.services.dht.findPeer(peerIdd)
                 this.logger.info(`findPeer(${peerId}) completato`)
 
                 // Vedi subito lo stato
