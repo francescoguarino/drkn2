@@ -141,7 +141,10 @@ export class NetworkManager extends EventEmitter {
 
         this.node.addEventListener('peer:connect', async (evt) => {
             const peer = evt.detail.toString();
-            this.logger.warn(`Peer connesso: ${peer}`);
+            this.peers.add(peer);
+            this.stats.peers = this.peers.size;
+            this.logger.info(`Peer connesso: ${peer}`);
+            this.logger.warn(`STATS: ${this.stats.peers} peers connessi`);
         });
 
         this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
@@ -215,9 +218,11 @@ export class NetworkManager extends EventEmitter {
 
         this.node.addEventListener('peer:disconnect', (evt) => {
             const peer = evt.detail.toString();
-            this.logger.warn(`Peer disconnesso: ${peer}`);
             this.peers.delete(peer);
             this.stats.peers = this.peers.size;
+            this.logger.warn(`Peer disconnesso: ${peer}`);
+            this.logger.warn(`STATS: ${this.stats.peers} peers connessi`);
+           
         }
         );
 
