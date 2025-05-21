@@ -9,7 +9,7 @@ import { unmarshalPrivateKey } from '@libp2p/crypto/keys'
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
 import { noise } from '@libp2p/noise'
-//import { identify } from '@libp2p/identify'
+import { identify } from '@libp2p/identify'
 import { mplex } from '@libp2p/mplex'
 import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
@@ -152,7 +152,7 @@ export class NetworkManager extends EventEmitter {
             const peerIdObj = connection.remotePeer
             this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
-            
+
 
 
             // Un solo loop sulla source
@@ -221,7 +221,7 @@ export class NetworkManager extends EventEmitter {
             this.stats.peers = this.peers.size;
             this.logger.warn(`Peer disconnesso: ${peer}`);
             this.logger.warn(`STATS: ${this.stats.peers} peers connessi`);
-           
+
         }
         );
 
@@ -322,7 +322,17 @@ export class NetworkManager extends EventEmitter {
                         allowQueryWithZeroPeers: true,
                         protocolPrefix: '/drakon/dht/1.0.0',
                     })
-                }
+                },
+                // **inietta identify**
+                connectionManager: {
+                    minConnections: 0,
+                    maxConnections: 100
+                },
+                // Aggiungi identify qui:
+                // NB: identify è un “protocol handler”, non un transport o un muxer
+                // Lo puoi mettere in protocols/connectionEncryption o in “transports” a seconda di versione
+                // In v0.43+ lo passi direttamente così:
+                identify: identify()
             })
 
 

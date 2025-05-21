@@ -9,7 +9,7 @@ import { unmarshalPrivateKey } from '@libp2p/crypto/keys'
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
 import { noise } from '@libp2p/noise'
-//import { identify } from '@libp2p/identify'
+import { identify } from '@libp2p/identify'
 import { mplex } from '@libp2p/mplex'
 import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
@@ -295,15 +295,16 @@ export class NetworkManager extends EventEmitter {
                         protocolPrefix: '/drakon/dht/1.0.0',
 
                     })
-                }
+                },
+                identify: identify()
 
             })
 
             this.setupHandlers();
             await this.node.start();
+            this.setupDHTMonitoring()
 
-
-            this.setupDHTMonitoring() // <-- Aggiungi questa linea
+            await this.node.services.dht.start()
 
             // Esegui una query di esempio per popolare la DHT
             setTimeout(async () => {
