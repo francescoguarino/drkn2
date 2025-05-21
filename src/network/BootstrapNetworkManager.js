@@ -16,6 +16,7 @@ import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
+import { kadDHT } from '@libp2p/kad-dht'
 
 import { HelloProtocol } from './protocols/Hello.js'
 
@@ -244,6 +245,9 @@ export class NetworkManager extends EventEmitter {
                 }
             });
 
+            this.peerId.privKey = this.peerId.privateKey
+            this.peerId.toMultihash = () => this.peerId.multihash
+
 
             this.node = await createLibp2p({
                 peerId: this.peerId,
@@ -270,7 +274,18 @@ export class NetworkManager extends EventEmitter {
                     //     enabled: true,
                     //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
                     // })
-                ]
+                ],
+                services: {
+                    dht: kadDHT({
+                        clientMode: false,
+                        protocolPrefix: '/drakon-dht', // Aggiungi prefisso personalizzato
+                        maxInboundStreams: 32,
+                        maxOutboundStreams: 64,
+                        // Abilita esplicitamente la modalità server DHT
+                        kBucketSize: 20,
+                        clientMode: false
+                    })
+                }
             })
 
 
@@ -278,6 +293,19 @@ export class NetworkManager extends EventEmitter {
 
 
             await this.node.start();
+
+
+            this.setupDHTMonitoring() // <-- Aggiungi questa linea
+
+            // Esegui una query di esempio per popolare la DHT
+            setTimeout(async () => {
+                try {
+                    await this.node.services.dht.get(uint8ArrayFromString('example-key'))
+                    this.logger.info('Query DHT eseguita con successo')
+                } catch (error) {
+                    this.logger.error('Errore query DHT:', error)
+                }
+            }, 5000)
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
@@ -293,5 +321,69 @@ export class NetworkManager extends EventEmitter {
 
 
     }
+
+
+        setupDHTMonitoring() {
+        const dht = this.node.services.dht
+        const rt = dht.routingTable
+
+        if (!rt) {
+            this.logger.error('Routing table non disponibile')
+            return
+        }
+
+        // Log iniziale dello stato
+        this.logRoutingTableStatus()
+
+        // Gestione eventi della routing table
+        rt.addEventListener('peer:added', (evt) => {
+            const peerId = evt.detail.toString()
+            this.logger.info(`📥 Peer aggiunto alla routing table: ${peerId}`)
+            this.logRoutingTableStatus()
+
+            // Verifica connessione attiva
+            this.node.getConnections(peerId).then(connections => {
+                if (connections.length === 0) {
+                    this.logger.warn(`Peer ${peerId} in routing table ma nessuna connessione attiva`)
+                }
+            })
+        })
+
+        rt.addEventListener('peer:removed', (evt) => {
+            const peerId = evt.detail.toString()
+            this.logger.info(`📤 Peer rimosso dalla routing table: ${peerId}`)
+            this.logRoutingTableStatus()
+        })
+
+        // Monitoraggio periodico
+        this.dhtInterval = setInterval(() => {
+            this.logRoutingTableStatus()
+        }, 30000)
+    }
+
+    logRoutingTableStatus() {
+        const rt = this.node.services.dht.routingTable;
+        // Check if routing table or buckets are unavailable
+        if (!rt || !rt.buckets) {
+            this.logger.warn('Routing table or buckets non disponibili');
+            return;
+        }
+
+        const status = {
+            totalPeers: rt.size,
+            buckets: rt.buckets.length,
+            bucketsDetails: rt.buckets.map((bucket, index) => ({
+                bucketIndex: index,
+                peersCount: bucket.peers.length,
+                lastActivity: bucket.lastActivity,
+                head: bucket.head?.id.toString() || 'null',
+                tail: bucket.tail?.id.toString() || 'null'
+            })),
+            kadProtocol: this.node.services.dht.lan.protocol
+        };
+
+        this.logger.info('Stato Routing Table:', JSON.stringify(status, null, 2));
+    }
+
 
 }
