@@ -1,3 +1,4 @@
+
 // PeerId
 import { createEd25519PeerId as createNewPeerId, createFromPrivKey } from '@libp2p/peer-id-factory'
 
@@ -10,27 +11,24 @@ import { tcp } from '@libp2p/tcp'
 import { noise } from '@libp2p/noise'
 //import { identify } from '@libp2p/identify'
 import { mplex } from '@libp2p/mplex'
-import { bootstrap } from '@libp2p/bootstrap'
+//import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
-import { kadDHT } from '@libp2p/kad-dht'
 
-//Protocls
 import { HelloProtocol } from './protocols/Hello.js'
 
 // Utils per messaggi
 import { fromString as uint8ArrayFromString, toString as uint8ArrayToString } from 'uint8arrays'
 import { EventEmitter } from 'events'
-import { peerIdFromString } from '@libp2p/peer-id';
 
-//Utils
+
 import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
 
-const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz'];
+const DEFAULTBOOTSTRAP_NODES = [];
 
 export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
@@ -49,10 +47,6 @@ export class NetworkManager extends EventEmitter {
             messageReceived: 0,
         }
     }
-
-
-    ma = multiaddr('/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz');
-
 
     /**
      * Carica un PeerId esistente o ne crea uno nuovo
@@ -83,7 +77,7 @@ export class NetworkManager extends EventEmitter {
                             const privKeyStr = nodeInfo.peerId.privKey;
                             const privKeyBuffer = Buffer.from(privKeyStr, 'base64');
 
-                            // this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
+                            //   this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
 
                             // Decodifica la chiave privata e crea il PeerId
                             const privKey = await unmarshalPrivateKey(privKeyBuffer);
@@ -133,87 +127,70 @@ export class NetworkManager extends EventEmitter {
     }
 
     setupHandlers() {
-
-
-        // In client's setupHandlers():
-        this.node.addEventListener('peer:discovery', async evt => {
-            const peerIdStr = evt.detail.id.toString()
-            const addrs = evt.detail.multiaddrs  // ← array di Multiaddr
-
-            for (const ma of addrs) {
-                this.logger.info(`Scoperto peer ${peerIdStr} su ${ma.toString()}: provo a connettermi…`)
-                try {
-                    // <-- dial con Multiaddr valido
-                    await this.node.dial(ma)
-                    this.logger.info(`Dial riuscito su ${ma.toString()}`)
-                    break
-                } catch (err) {
-                    this.logger.warn(`Dial fallito su ${ma.toString()}: ${err.message}`)
-                }
+        // Peer discovery
+        this.node.addEventListener('peer:discovery', (evt) => {
+            const peer = evt.detail.id.toString();
+            if (!this.peers.has(peer)) {
+                this.peers.add(peer);
+                this.logger.info(`Nuovo peer connesso: ${peer}`);
+                this.stats.peers = this.peers.size;
+                this.emit('peer:discovered', peer);
             }
-        })
+        });
 
+        this.node.addEventListener('peer:connect', async (evt) => {
+            const peer = evt.detail.toString();
+            this.logger.warn(`Peer connesso: ${peer}`);
+        });
 
-        this.node.addEventListener('peer:connect', async evt => {
-            const peerIdStr = evt.detail.toString()
-            const peerIdObj = peerIdFromString(peerIdStr)
-            this.logger.info(`Connessione stabilita con ${peerIdStr}`)
+        this.node.handle('/drakon/hello/1.0.0', async ({ stream, connection }) => {
+            const peerId = connection.remotePeer.toString()
+            this.logger.info(`Inizio handler HelloProtocol da ${peerId}`)
 
+            // Un solo loop sulla source
+            for await (const packet of stream.source) {
+                // Estrai il buffer puro in base al tipo di packet
+                const chunk =
+                    packet instanceof Uint8Array
+                        ? packet
+                        : packet && packet.data instanceof Uint8Array
+                            ? packet.data
+                            : packet && typeof packet.subarray === 'function'
+                                ? packet.subarray()
+                                : null
 
-            let stream
-            try {
-                stream = await this.node.dialProtocol(peerIdObj, '/drakon/hello/1.0.0')
+                if (!chunk) {
+                    this.logger.warn(`Ricevuto chunk non processabile (${packet}), skipping…`)
+                    continue
+                }
 
+                const incoming = uint8ArrayToString(chunk)
+                this.logger.info(`Ricevuto da ${peerId}: ${incoming}`)
+                this.stats.messageReceived++
 
-                // invio
+                // Rispondi subito
+                const reply = `Ciao ${peerId}, ho ricevuto: "${incoming}"`
                 await pipe(
-                    [uint8ArrayFromString('Ciao dal Client!')],
+                    [uint8ArrayFromString(reply)],
                     stream.sink
                 )
-                this.logger.info('Messaggio inviato, in attesa di risposta…')
-
-                // ricezione e decoding
-                for await (const packet of stream.source) {
-                    const chunk =
-                        packet instanceof Uint8Array
-                            ? packet
-                            : packet && packet.data instanceof Uint8Array
-                                ? packet.data
-                                : packet && typeof packet.subarray === 'function'
-                                    ? packet.subarray()
-                                    : null
-
-                    if (!chunk) {
-                        this.logger.warn(`Skipping invalid packet: ${packet}`)
-                        continue
-                    }
-
-                    const incoming = uint8ArrayToString(chunk)
-                    this.logger.info(`Ricevuto risposta: ${incoming}`)
-                    break
-                }
-            } catch (err) {
-                this.logger.error(`Errore nello stream con ${peerIdStr}: ${err.message}`)
-            } finally {
-                if (stream && typeof stream.close === 'function') {
-                    try {
-                        // se il metodo è async
-                        const res = stream.close()
-                        if (res instanceof Promise) await res
-                    } catch (ce) {
-                        this.logger.warn(`Errore chiudendo lo stream: ${ce.message}`)
-                    }
-                }
+                this.logger.info(`Risposta inviata a ${peerId}`)
+                this.stats.messageSent++
             }
         })
 
 
 
-        this.node.addEventListener('peer:disconnect', async (evt) => {
+
+        this.node.addEventListener('peer:disconnect', (evt) => {
             const peer = evt.detail.toString();
-            this.logger.info(`Peer disconnesso: ${peer}`);
+            this.logger.warn(`Peer disconnesso: ${peer}`);
+            this.peers.delete(peer);
+            this.stats.peers = this.peers.size;
         }
         );
+
+
 
     }
 
@@ -234,69 +211,6 @@ export class NetworkManager extends EventEmitter {
             this.logger.error('Errore durante l\'arresto del NetworkManager:', error);
             throw error;
         }
-    }
-
-
-    setupDHTMonitoring() {
-        const dht = this.node.services.dht
-        const rt = dht.routingTable
-
-        if (!rt) {
-            this.logger.error('Routing table non disponibile')
-            return
-        }
-
-        // Log iniziale dello stato
-        this.logRoutingTableStatus()
-
-        // Gestione eventi della routing table
-        rt.addEventListener('peer:added', (evt) => {
-            const peerId = evt.detail.toString()
-            this.logger.info(`📥 Peer aggiunto alla routing table: ${peerId}`)
-            this.logRoutingTableStatus()
-
-            // Verifica connessione attiva
-            this.node.getConnections(peerId).then(connections => {
-                if (connections.length === 0) {
-                    this.logger.warn(`Peer ${peerId} in routing table ma nessuna connessione attiva`)
-                }
-            })
-        })
-
-        rt.addEventListener('peer:removed', (evt) => {
-            const peerId = evt.detail.toString()
-            this.logger.info(`📤 Peer rimosso dalla routing table: ${peerId}`)
-            this.logRoutingTableStatus()
-        })
-
-        // Monitoraggio periodico
-        this.dhtInterval = setInterval(() => {
-            this.logRoutingTableStatus()
-        }, 30000)
-    }
-
-    logRoutingTableStatus() {
-        const rt = this.node.services.dht.routingTable;
-        // Check if routing table or buckets are unavailable
-        if (!rt || !rt.buckets) {
-            this.logger.warn('Routing table or buckets non disponibili');
-            return;
-        }
-
-        const status = {
-            totalPeers: rt.size,
-            buckets: rt.buckets.length,
-            bucketsDetails: rt.buckets.map((bucket, index) => ({
-                bucketIndex: index,
-                peersCount: bucket.peers.length,
-                lastActivity: bucket.lastActivity,
-                head: bucket.head?.id.toString() || 'null',
-                tail: bucket.tail?.id.toString() || 'null'
-            })),
-            kadProtocol: this.node.services.dht.lan.protocol
-        };
-
-        this.logger.info('Stato Routing Table:', JSON.stringify(status, null, 2));
     }
 
     async start() {
@@ -330,11 +244,6 @@ export class NetworkManager extends EventEmitter {
                 }
             });
 
-            this.peerId.privKey = this.peerId.privateKey
-            this.peerId.toMultihash = () => this.peerId.multihash
-
-            const legacyPeerId = peerIdFromString(this.peerId.toString())
-
 
             this.node = await createLibp2p({
                 peerId: this.peerId,
@@ -352,50 +261,30 @@ export class NetworkManager extends EventEmitter {
                 streamMuxers: [
                     mplex()
                 ],
-                peerDiscovery: [
-                    bootstrap({
-                        interval: 20000,
-                        enabled: true,
-                        list: this.config.bootstrapNodes
-                    })
-                ],
                 protocols: [
-                    HelloProtocol()
+                    HelloProtocol(),
                 ],
-                services: {
-                    dht: kadDHT({
-                        clientMode: false,
-                        protocolPrefix: '/drakon-dht', // Aggiungi prefisso personalizzato
-                        maxInboundStreams: 32,
-                        maxOutboundStreams: 64,
-                        // Abilita esplicitamente la modalità server DHT
-                        kBucketSize: 20,
-                        clientMode: false
-                    })
-                }
-
+                peerDiscovery: [
+                    // bootstrap({
+                    //     interval: 20000,
+                    //     enabled: true,
+                    //     list: this.config.bootstrapNodes // Ensure this includes its own multiaddr
+                    // })
+                ]
             })
+
 
             this.setupHandlers();
 
 
             await this.node.start();
 
-
-            this.setupDHTMonitoring() // <-- Aggiungi questa linea
-
-            // Esegui una query di esempio per popolare la DHT
-            setTimeout(async () => {
-                try {
-                    await this.node.services.dht.get(uint8ArrayFromString('example-key'))
-                    this.logger.info('Query DHT eseguita con successo')
-                } catch (error) {
-                    this.logger.error('Errore query DHT:', error)
-                }
-            }, 5000)
-
+            this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
             return true
+
+
+
         } catch (error) {
             this.logger.error("Errore durante l'avvio del NetworkManager:", error);
             throw error;
