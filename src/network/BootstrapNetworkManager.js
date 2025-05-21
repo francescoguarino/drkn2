@@ -178,6 +178,15 @@ export class NetworkManager extends EventEmitter {
                 this.logger.info(`Risposta inviata a ${peerId}`)
                 this.stats.messageSent++
             }
+
+            try {
+                // Lookup Kademlia che popola i bucket
+                await this.node.services.dht.findPeer(peerIdStr)
+                this.logger.info(`findPeer(${peerIdStr}) completato: routing table aggiornata`)
+                this.logRoutingTableStatus()  // vedi subito i cambiamenti
+            } catch (err) {
+                this.logger.error(`findPeer fallito per ${peerIdStr}: ${err.message}`)
+            }
         })
 
 
@@ -323,7 +332,7 @@ export class NetworkManager extends EventEmitter {
     }
 
 
-        setupDHTMonitoring() {
+    setupDHTMonitoring() {
         const dht = this.node.services.dht
         const rt = dht.routingTable
 
