@@ -157,13 +157,17 @@ export class NetworkManager extends EventEmitter {
         })
 
 
+
         this.node.addEventListener('peer:connect', async evt => {
             const peerIdStr = evt.detail.toString()
             const peerIdObj = peerIdFromString(peerIdStr)
             this.logger.info(`Connessione stabilita con ${peerIdStr}`)
 
+
+            let stream
             try {
-                const stream = await this.node.dialProtocol(peerIdObj, '/drakon/hello/1.0.0')
+                stream = await this.node.dialProtocol(peerIdObj, '/drakon/hello/1.0.0')
+
 
                 // invio
                 await pipe(
@@ -194,6 +198,16 @@ export class NetworkManager extends EventEmitter {
                 }
             } catch (err) {
                 this.logger.error(`Errore nello stream con ${peerIdStr}: ${err.message}`)
+            } finally {
+                if (stream && typeof stream.close === 'function') {
+                    try {
+                        // se il metodo è async
+                        const res = stream.close()
+                        if (res instanceof Promise) await res
+                    } catch (ce) {
+                        this.logger.warn(`Errore chiudendo lo stream: ${ce.message}`)
+                    }
+                }
             }
         })
 
@@ -345,7 +359,7 @@ export class NetworkManager extends EventEmitter {
                     })
                 ],
                 protocols: [HelloProtocol()],
-                services: { 
+                services: {
                     dht: kadDHT({
                         clientMode: false,
                         protocolPrefix: '/drakon-dht', // Aggiungi prefisso personalizzato

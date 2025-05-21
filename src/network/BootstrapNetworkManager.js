@@ -162,7 +162,7 @@ export class NetworkManager extends EventEmitter {
 
             let stream
             try {
-                stream = await this.node.newStream(peerIdObj, '/hello/1.0.0')
+                stream = await this.node.dialProtocol(peerIdObj, '/drakon/hello/1.0.0')
 
 
                 // invio
