@@ -183,10 +183,10 @@ export class NetworkManager extends EventEmitter {
             try {
                 // 1️⃣ Metodo “low-level”: inserisce subito il peer nella routing table
 
-                 peerIdObj.toMultihash = () => peerIdObj.multihash
-+
+                peerIdObj.toMultihash = () => peerIdObj.multihash
+                    +
 
-                this.node.services.dht.routingTable.add(peerIdObj)
+                    this.node.services.dht.routingTable.add(peerIdObj)
                 this.logger.info(`RoutingTable.add(${peerId}) eseguito`)
 
                 // 2️⃣ (opzionale) Per completezza, fai anche un lookup Kademlia:
@@ -211,7 +211,9 @@ export class NetworkManager extends EventEmitter {
         }
         );
 
-
+        this.node.services.dht.addEventListener('error', (err) => {
+            this.logger.error('Errore DHT:', err)
+        })
 
     }
 
@@ -290,16 +292,15 @@ export class NetworkManager extends EventEmitter {
                     HelloProtocol(),
                 ],
                 peerDiscovery: [
-                     bootstrap({
-                         interval: 20000,
-                         enabled: true,
-                         list: DEFAULTBOOTSTRAP_NODES // Ensure this includes its own multiaddr
-                     })
+                    bootstrap({
+                        interval: 20000,
+                        enabled: true,
+                        list: DEFAULTBOOTSTRAP_NODES // Ensure this includes its own multiaddr
+                    })
                 ],
                 services: {
                     dht: kadDHT({
                         enabled: true,
-                        protocolPrefix: '/drakon-dht', // Aggiungi prefisso personalizzato
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
                         // Abilita esplicitamente la modalità server DHT
@@ -314,7 +315,7 @@ export class NetworkManager extends EventEmitter {
 
 
             await this.node.start();
-
+            await this.node.services.dht.start()
 
             this.setupDHTMonitoring() // <-- Aggiungi questa linea
 
@@ -326,7 +327,7 @@ export class NetworkManager extends EventEmitter {
                 } catch (error) {
                     this.logger.error('Errore query DHT:', error)
                 }
-            }, 5000)
+            }, 10000)
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 

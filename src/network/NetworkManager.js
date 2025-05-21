@@ -287,7 +287,6 @@ export class NetworkManager extends EventEmitter {
                 services: {
                     dht: kadDHT({
                         clientMode: false,
-                        protocolPrefix: '/drakon-dht', // Aggiungi prefisso personalizzato
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
                         // Abilita esplicitamente la modalità server DHT
