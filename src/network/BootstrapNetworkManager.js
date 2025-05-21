@@ -317,11 +317,14 @@ export class NetworkManager extends EventEmitter {
                 }
             });
 
+            this.peerId.privKey = this.peerId.privateKey
+            this.peerId.toMultihash = () => this.peerId.multihash
+
             const legacyPeerId = peerIdFromString(this.peerId.toString())
 
 
             this.node = await createLibp2p({
-                peerId: legacyPeerId,
+                peerId: this.peerId,
                 addresses: {
                     listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`]
                 },
