@@ -193,15 +193,20 @@ export class NetworkManager extends EventEmitter {
             try {
 
 
-
-
-
                 try {
-                    await this.node.services.dht.findPeer(peerId)
-                    this.logger.info(`findPeer(${peerId}) completato`)
+                    await this.node.services.dht.routingTable.add(peerIdObj)
+                    this.logger.info(`✅ Peer ${peerId} aggiunto alla routing table`)
                 } catch (err) {
-                    this.logger.error(`❌ Impossibile aggiungere ....findPeer....(${peerId}) fallito: ${err.message}`)
+                    this.logger.error(`❌ Impossibile aggiungere ${peerId} alla routing table: ${err.message}`)
                 }
+
+
+//                try {
+//                    await this.node.services.dht.findPeer(peerId)
+  //                  this.logger.info(`findPeer(${peerId}) completato`)
+   //             } catch (err) {
+     //               this.logger.error(`❌ Impossibile aggiungere ....findPeer....(${peerId}) fallito: ${err.message}`)
+       //         }
 
 
                 // Vedi subito lo stato
