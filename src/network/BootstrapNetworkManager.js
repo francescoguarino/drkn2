@@ -193,12 +193,7 @@ export class NetworkManager extends EventEmitter {
             try {
 
 
-                try {
-                    await this.node.services.dht.routingTable.add(peerIdObj)
-                    this.logger.info(`✅ Peer ${peerId} aggiunto alla routing table`)
-                } catch (err) {
-                    this.logger.error(`❌ Impossibile aggiungere ${peerId} alla routing table: ${err.message}`)
-                }
+
 
 
                 try {
@@ -345,14 +340,7 @@ export class NetworkManager extends EventEmitter {
             this.setupDHTMonitoring()
 
             // Esegui una query di esempio per popolare la DHT
-            setTimeout(async () => {
-                try {
-                    await this.node.services.dht.get(uint8ArrayFromString('example-key'))
-                    this.logger.info('Query DHT eseguita con successo')
-                } catch (error) {
-                    this.logger.error('Errore query DHT:', error)
-                }
-            }, 10000)
+  
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
@@ -405,7 +393,7 @@ export class NetworkManager extends EventEmitter {
         // Monitoraggio periodico
         this.dhtInterval = setInterval(() => {
             this.logRoutingTableStatus()
-        }, 3000)
+        }, 6000)
     }
 
     logRoutingTableStatus() {

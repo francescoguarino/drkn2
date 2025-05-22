@@ -9,7 +9,6 @@ import { unmarshalPrivateKey } from '@libp2p/crypto/keys'
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
 import { noise } from '@libp2p/noise'
-import { identify } from '@libp2p/identify'
 import { mplex } from '@libp2p/mplex'
 import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
@@ -135,7 +134,8 @@ export class NetworkManager extends EventEmitter {
         }
     }
 
-    setupHandlers() {
+
+        setupHandlers() {
 
 
         // Gestione eventi per la connessione a un peer:
@@ -247,15 +247,18 @@ export class NetworkManager extends EventEmitter {
                 this.peerId = await this.loadOrCreatePeerId();
             }
 
-            // Implementa il salvataggio delle informazioni
-            await this.storage.saveNodeInfo({
-                nodeId: this.nodeId,
-                peerId: {
-                    id: this.peerId.toString(),
-                    privKey: Buffer.from(this.peerId.privateKey).toString('base64'),
-                    pubKey: Buffer.from(this.peerId.publicKey).toString('base64')
-                }
-            });
+            this.logger.warn(JSON.stringify({
+                ID: this.peerId.toString(),
+                TYPE: this.peerId.type,
+                PRIV: this.peerId.privateKey ? Buffer.from(this.peerId.privateKey).toString('base64') : 'non disponibile',
+                PUB: this.peerId.publicKey ? Buffer.from(this.peerId.publicKey).toString('base64') : 'non disponibile',
+            }, null, 2));
+
+
+
+
+         
+
 
 
             this.node = await createLibp2p({
@@ -295,26 +298,23 @@ export class NetworkManager extends EventEmitter {
                         protocolPrefix: '/drakon/dht/1.0.0',
                         allowQueryWithZeroPeers: true,
                     })
-                },
-                identify: identify()
+                }
 
             })
 
             this.setupHandlers();
             await this.node.start();
-            this.setupDHTMonitoring()
-
+             this.setupDHTMonitoring()
             await this.node.services.dht.start()
 
+
+            
+
             // Esegui una query di esempio per popolare la DHT
-            setTimeout(async () => {
-                try {
-                    await this.node.services.dht.get(uint8ArrayFromString('example-key'))
-                    this.logger.info('Query DHT eseguita con successo')
-                } catch (error) {
-                    this.logger.error('Errore query DHT:', error)
-                }
-            }, 5000)
+            
+               
+            
+               
 
             return true
         } catch (error) {
@@ -362,7 +362,7 @@ export class NetworkManager extends EventEmitter {
         // Monitoraggio periodico
         this.dhtInterval = setInterval(() => {
             this.logRoutingTableStatus()
-        }, 30000)
+        }, 6000)
     }
 
        logRoutingTableStatus() {
