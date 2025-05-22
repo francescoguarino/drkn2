@@ -409,6 +409,7 @@ export class NetworkManager extends EventEmitter {
         }
         const totalPeers = rt.size;
         this.logger.info(`Stato DHT: ${totalPeers} peer in routing table`);
+
     }
 
 
