@@ -17,7 +17,6 @@ import { pipe } from 'it-pipe'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
 import { kadDHT } from '@libp2p/kad-dht'
-import { peerStore } from '@libp2p/peer-store'      // ← importa il service
 
 import { HelloProtocol } from './protocols/Hello.js'
 
@@ -141,19 +140,14 @@ export class NetworkManager extends EventEmitter {
         });
 
         this.node.addEventListener('peer:connect', async (evt) => {
-            const peerId = evt.detail.toString()
-            const conns = this.node.getConnections(peerId)
-            for (const conn of conns) {
-                // conn.remoteAddr è un Multiaddr
-                this.logger.info(`Connesso a ${peerId} su ${conn.remoteAddr.toString()}`)
-                // opzionale: salva in peerStore
-                this.node.peerStore.addressBook.add(peerId, conn.remoteAddr)
-            }
+            const peer = evt.detail.toString();
+            const connections =  this.node.getConnections(peer);
+             this.logger.info(`Peer connesso: ${peer}`);
 
-
-            this.peers.add(peerId);
+             
+            this.peers.add(peer);
             this.stats.peers = this.peers.size;
-            ;
+            this.logger.info(`Peer connesso: ${peer}`);
             this.logger.warn(`STATS: ${this.stats.peers} peers connessi`);
         });
 
@@ -331,15 +325,14 @@ export class NetworkManager extends EventEmitter {
                         clientMode: false,
                         allowQueryWithZeroPeers: true,
                         protocolPrefix: '/drakon/dht/1.0.0',
-                    }),
-                    peerStore: peerStore()
+                    })
                 },
                 // **inietta identify**
                 connectionManager: {
                     minConnections: 0,
                     maxConnections: 100
                 },
-
+ 
             })
 
 
