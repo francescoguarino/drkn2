@@ -140,10 +140,19 @@ export class NetworkManager extends EventEmitter {
         });
 
         this.node.addEventListener('peer:connect', async (evt) => {
-            const peer = evt.detail.toString();
-            this.peers.add(peer);
+            const peerId = evt.detail.toString()
+            const conns = this.node.getConnections(peerId)
+            for (const conn of conns) {
+                // conn.remoteAddr è un Multiaddr
+                this.logger.info(`Connesso a ${peerId} su ${conn.remoteAddr.toString()}`)
+                // opzionale: salva in peerStore
+                this.node.peerStore.addressBook.add(peerId, conn.remoteAddr)
+            }
+
+
+            this.peers.add(peerId);
             this.stats.peers = this.peers.size;
-            this.logger.info(`Peer connesso: ${peer}`);
+            ;
             this.logger.warn(`STATS: ${this.stats.peers} peers connessi`);
         });
 
@@ -328,11 +337,7 @@ export class NetworkManager extends EventEmitter {
                     minConnections: 0,
                     maxConnections: 100
                 },
-                // Aggiungi identify qui:
-                // NB: identify è un “protocol handler”, non un transport o un muxer
-                // Lo puoi mettere in protocols/connectionEncryption o in “transports” a seconda di versione
-                // In v0.43+ lo passi direttamente così:
-                identify: identify()
+
             })
 
 
