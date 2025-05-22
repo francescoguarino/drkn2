@@ -17,6 +17,8 @@ import { pipe } from 'it-pipe'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
 import { kadDHT } from '@libp2p/kad-dht'
+import { peerStore } from '@libp2p/peer-store'      // ← importa il service
+import { addressBook } from '@libp2p/peer-store/address-book' // ← il sottocompone
 
 import { HelloProtocol } from './protocols/Hello.js'
 
@@ -330,6 +332,9 @@ export class NetworkManager extends EventEmitter {
                         clientMode: false,
                         allowQueryWithZeroPeers: true,
                         protocolPrefix: '/drakon/dht/1.0.0',
+                    }),
+                    peerStore: peerStore({
+                        protocols: [addressBook()] // abilita addressBook
                     })
                 },
                 // **inietta identify**
