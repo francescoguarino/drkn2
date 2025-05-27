@@ -1,6 +1,6 @@
 
 // PeerId
-import { createEd25519PeerId as createNewPeerId,  createFromJSON } from '@libp2p/peer-id-factory'
+import { createEd25519PeerId as createNewPeerId, createFromJSON } from '@libp2p/peer-id-factory'
 /* import type { PrivateKey } from '@libp2p/interface' */ // Removed: Type-only import not allowed in JS
 
 // Decodifica chiave privata
@@ -199,7 +199,7 @@ export class NetworkManager extends EventEmitter {
             //     this.stats.peers = this.peers.size;
             //     this.emit('peer:discovered', peer);
             // }
-              console.log('found peer: ', evt.detail.toString())
+            console.log('found peer: ', evt.detail.toString())
         });
 
         this.node.addEventListener('peer:connect', async (evt) => {
@@ -339,10 +339,10 @@ export class NetworkManager extends EventEmitter {
             this.logger.warn(`– publicKey?  ${this.peerId.publicKey?.length} bytes`)
             this.logger.warn(`– type:      ${this.peerId.type}`)
 
-            
+
             let libp2pCompatiblePrivateKey;
             if (this.peerId.privateKey instanceof Uint8Array) {
-                
+
                 libp2pCompatiblePrivateKey = await privateKeyFromProtobuf(this.peerId.privateKey);
             } else {
                 libp2pCompatiblePrivateKey = this.peerId.privateKey;
@@ -376,7 +376,7 @@ export class NetworkManager extends EventEmitter {
                 services: {
                     identify: identify(),
                     dht: kadDHT({
-                        enabled: true,
+                        enabled: false,
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
                         kBucketSize: 20,
@@ -395,9 +395,12 @@ export class NetworkManager extends EventEmitter {
             this.setupHandlers();
 
             await this.node.start();
-            await this.node.services.dht.start()
 
-            this.setupDHTMonitoring()
+
+            this.logger.info(`Listening on: ${this.node.getMultiaddrs().map(ma => ma.toString()).join(', ')}`);
+
+         
+
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
 
