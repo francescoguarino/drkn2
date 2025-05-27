@@ -39,11 +39,6 @@ export class ConfigBuilder {
     return this;
   }
 
-//   setApiPort(port) {
-//     this.config.api = this.config.api || {};
-//     this.config.api.port = port;
-//     return this;
-//   }
 
   build() {
     return this.config;
