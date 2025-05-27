@@ -143,7 +143,7 @@ export class NetworkManager extends EventEmitter {
                 return null; // Correct: Returns null if no node info
             }
 
-            this.logger.warn(`CARICATOOO`);
+            this.logger.info(`CARICATOOO`);
 
             if (nodeInfo.peerId && typeof nodeInfo.peerId === 'object') {
                 this.logger.warn(`Dati PeerId caricati: id=${nodeInfo.peerId.id}, hasPrivKey=${!!nodeInfo.peerId.privKey}, hasPubKey=${!!nodeInfo.peerId.pubKey}`);
@@ -152,7 +152,7 @@ export class NetworkManager extends EventEmitter {
 
                 try {
                     const recreatedPeerId = await createFromJSON(nodeInfo.peerId);
-                    this.logger.warn(`PeerId ricreato con successo: ${recreatedPeerId.toString()}`);
+                    this.logger.info(`PeerId ricreato con successo: ${recreatedPeerId.toString()}`);
                     this.logger.warn(`PeerId ricreato - Type: ${recreatedPeerId.type}`);
 
 
@@ -189,21 +189,17 @@ export class NetworkManager extends EventEmitter {
 
 
 
-
-
-
-
-
     setupHandlers() {
         // Peer discovery
         this.node.addEventListener('peer:discovery', (evt) => {
-            const peer = evt.detail.id.toString();
-            if (!this.peers.has(peer)) {
-                this.peers.add(peer);
-                this.logger.info(`Nuovo peer connesso: ${peer}`);
-                this.stats.peers = this.peers.size;
-                this.emit('peer:discovered', peer);
-            }
+            // const peer = evt.detail.id.toString();
+            // if (!this.peers.has(peer)) {
+            //     this.peers.add(peer);
+            //     this.logger.info(`Nuovo peer connesso: ${peer}`);
+            //     this.stats.peers = this.peers.size;
+            //     this.emit('peer:discovered', peer);
+            // }
+              console.log('found peer: ', evt.detail.toString())
         });
 
         this.node.addEventListener('peer:connect', async (evt) => {
@@ -330,12 +326,9 @@ export class NetworkManager extends EventEmitter {
 
             if (loadedPeerId && loadedPeerId.privateKey) {
                 this.peerId = loadedPeerId;
-                this.logger.info(`0K ${this.peerId.toString()}`);
+                this.logger.debug(`0K-PeerId passato allo start${this.peerId.toString()}`);
             } else {
-                this.logger.info('Nessun PeerId esistente trovato o ricreato con chiave privata. Creazione di un nuovo PeerId...');
-                // createNewPeerId should already return a PeerId with a proper PrivateKey object,
-                // so the following re-hydration might not be strictly necessary for newly created IDs,
-                // but it ensures consistency.
+                this.logger.warn('Nessun PeerId esistente trovato o ricreato con chiave privata. Creazione di un nuovo PeerId...');
                 this.peerId = await createNewPeerId();
                 this.nodeId = this.peerId.toString();
                 this.logger.info(`Creato nuovo PeerId: ${this.peerId.toString()} e nodeId: ${this.nodeId}`);
@@ -346,16 +339,15 @@ export class NetworkManager extends EventEmitter {
             this.logger.warn(`– publicKey?  ${this.peerId.publicKey?.length} bytes`)
             this.logger.warn(`– type:      ${this.peerId.type}`)
 
-            // --- CRITICAL CHANGE: Reconstruct the PrivateKey object using libp2p's crypto module ---
+            
             let libp2pCompatiblePrivateKey;
             if (this.peerId.privateKey instanceof Uint8Array) {
-                // If it's just the bytes (which your console.dir suggests), reconstruct it
+                
                 libp2pCompatiblePrivateKey = await privateKeyFromProtobuf(this.peerId.privateKey);
             } else {
-                // If createFromJSON/createNewPeerId already returns a proper PrivateKey object, use it directly
                 libp2pCompatiblePrivateKey = this.peerId.privateKey;
             }
-            // --------------------------------------------------------------------------------------
+
 
             this.node = await createLibp2p({
                 privateKey: libp2pCompatiblePrivateKey, // <--- Use the fully compatible PrivateKey object
