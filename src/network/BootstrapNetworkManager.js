@@ -366,13 +366,6 @@ export class NetworkManager extends EventEmitter {
                 protocols: [
                     HelloProtocol(),
                 ],
-                peerDiscovery: [
-                    bootstrap({
-                        interval: 20000,
-                        enabled: true,
-                        list: DEFAULTBOOTSTRAP_NODES
-                    })
-                ],
                 services: {
                     identify: identify(),
                     dht: kadDHT({
