@@ -33,7 +33,7 @@ import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
 
-const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz'];
+const DEFAULTBOOTSTRAP_NODES = [''];
 
 export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
@@ -282,7 +282,7 @@ export class NetworkManager extends EventEmitter {
                 transports: [
                     tcp(),
                 ],
-                connectionEncryption: [
+               connectionEncryption: [
                     noise()
                 ],
                 streamMuxers: [
@@ -315,13 +315,11 @@ export class NetworkManager extends EventEmitter {
 
             await this.node.start();
 
-
+            this.logger.info("==============================================================");
             this.logger.info(`Listening on: ${this.node.getMultiaddrs().map(ma => ma.toString()).join(', ')}`);
-
-
-
-
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
+            this.logger.info("==============================================================");
+
 
             return true
 
