@@ -281,7 +281,7 @@ export class NetworkManager extends EventEmitter {
                 transports: [
                     tcp(),
                 ],
-               connectionEncryption: [
+                connectionEncrypters: [
                     noise()
                 ],
                 streamMuxers: [
