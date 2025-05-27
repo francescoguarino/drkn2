@@ -17,6 +17,7 @@ import { pipe } from 'it-pipe'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
 import { kadDHT } from '@libp2p/kad-dht'
+import { ping } from '@libp2p/ping'
 
 import { HelloProtocol } from './protocols/Hello.js'
 
@@ -316,6 +317,7 @@ export class NetworkManager extends EventEmitter {
                     })
                 ],
                 services: {
+                    identify: identify(),
                     dht: kadDHT({
                         enabled: true,
                         maxInboundStreams: 32,
@@ -325,7 +327,8 @@ export class NetworkManager extends EventEmitter {
                         clientMode: false,
                         allowQueryWithZeroPeers: true,
                         protocolPrefix: '/drakon/dht/1.0.0',
-                    })
+                    }),
+                    ping: ping()
                 },
                 // **inietta identify**
                 connectionManager: {
