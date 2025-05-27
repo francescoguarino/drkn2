@@ -42,6 +42,7 @@ export class NetworkManager extends EventEmitter {
         this.storage = new NodeStorage(config); // Richiede l'importazione di NodeStorage
         this.config = {
             port: 6001,
+            publicIp: process.env.PUBLIC_IP || "1.1.1.1",
             bootstrapNodes: DEFAULTBOOTSTRAP_NODES,
             ...config
         }
@@ -52,88 +53,6 @@ export class NetworkManager extends EventEmitter {
             messageReceived: 0,
         }
     }
-
-    /**
-     * Carica un PeerId esistente o ne crea uno nuovo
-     * @returns {Promise<PeerId>} - Oggetto PeerId
-    
-    async loadOrCreatePeerId() {
-        try {
-            // Carica le informazioni esistenti
-            const nodeInfo = await this.storage.loadNodeInfo();
-            // this.logger.info('Informazioni nodo caricate: ' + JSON.stringify({
-            //     hasNodeInfo: !!nodeInfo,
-            //     nodeId: nodeInfo?.nodeId || 'non presente',
-            //     hasPeerId: !!nodeInfo?.peerId,
-            //     peerIdType: nodeInfo?.peerId ? typeof nodeInfo.peerId : 'non presente'
-            // }));
-
-            // Se abbiamo informazioni salvate con un PeerId, proviamo a usarle
-            if (nodeInfo && nodeInfo.peerId) {
-                this.logger.info('Trovato PeerId salvato, tentativo di riutilizzo...');
-
-                try {
-                    // Verifichiamo che abbiamo la chiave privata
-                    if (typeof nodeInfo.peerId === 'object' && nodeInfo.peerId.privKey) {
-                        //  this.logger.info('Chiavi private trovate, tentativo di ricostruzione PeerId...');
-
-                        try {
-                            // Converti la chiave da base64 a buffer
-                            const privKeyStr = nodeInfo.peerId.privKey;
-                            const privKeyBuffer = Buffer.from(privKeyStr, 'base64');
-
-
-                            this.logger.warn(`Chiave privata trovata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
-                            //   this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
-
-                            // Decodifica la chiave privata e crea il PeerId
-                            const privKey = await privateKeyFromProtobuf(privKeyBuffer);
-                            const peerId = await createFromPrivKey(privKey);
-
-                            this.logger.info(`PeerId creato con successo: ${peerId.toString()}`);
-
-                            // Verifica corrispondenza con l'ID salvato
-                            if (peerId.toString() !== nodeInfo.peerId.id) {
-                                this.logger.warn(`⚠️ Il PeerId generato (${peerId.toString()}) non corrisponde all'ID salvato (${nodeInfo.peerId.id})`);
-                                this.logger.warn('Questo potrebbe essere causato da cambiamenti nelle librerie libp2p. Utilizzerò comunque il nuovo PeerId generato.');
-                                // Aggiorna l'ID nel nodeInfo per i futuri caricamenti
-                                nodeInfo.peerId.id = peerId.toString();
-                                await this.storage.saveNodeInfo(nodeInfo);
-                                this.logger.info(`Informazioni nodo aggiornate con il nuovo PeerId: ${peerId.toString()}`);
-                            }
-
-                            return peerId;
-                        } catch (importError) {
-                            this.logger.error(`Errore importazione chiave: ${importError.message}`);
-                            throw importError;
-                        }
-                    } else if (typeof nodeInfo.peerId === 'string') {
-                        // Qui abbiamo solo l'ID come stringa, senza chiavi
-                        this.logger.warn('Solo ID PeerId trovato senza chiavi private, impossibile riutilizzare lo stesso PeerId');
-                        throw new Error('PeerId senza chiavi private non utilizzabile');
-                    } else {
-                        this.logger.warn('Formato PeerId salvato non riconoscibile');
-                        throw new Error('Formato PeerId non valido');
-                    }
-                } catch (error) {
-                    this.logger.error(`Errore nel caricamento del PeerId: ${error.message}`);
-                    this.logger.info('Sarà generato un nuovo PeerId');
-                    // Fallback a creazione nuovo PeerId
-                    return await createNewPeerId();
-                }
-            } else {
-                // Nessun PeerId trovato, ne creiamo uno nuovo
-                this.logger.info('Nessun PeerId trovato, creazione nuovo PeerId');
-                return await createNewPeerId();
-            }
-        } catch (error) {
-            this.logger.error(`Errore generale in loadOrCreatePeerId: ${error.message}`);
-            // Fallback finale: crea un nuovo PeerId
-            return await createNewPeerId();
-        }
-    }
-        */
-
 
     async loadNode() {
         try {
@@ -184,9 +103,6 @@ export class NetworkManager extends EventEmitter {
             return null; // Correct: Returns null on general error
         }
     }
-
-
-
 
 
     setupHandlers() {
@@ -349,13 +265,22 @@ export class NetworkManager extends EventEmitter {
             }
 
 
+
+
+            //ENV_IP
+            if (this.config.publicIp || !this.config.publicIp === "1.1.1.1") {
+            const publicMultiaddr = `/ip4/${this.config.publicIp}/tcp/${this.config.port}`;
+            this.logger.info(`Node will attempt to announce on: ${publicMultiaddr}`);
+            }
+
             this.node = await createLibp2p({
                 privateKey: libp2pCompatiblePrivateKey, // <--- Use the fully compatible PrivateKey object
                 addresses: {
                     listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
+                    announce: [publicMultiaddr]
                 },
                 transports: [
-                    tcp(),
+                    tcp(),  
                 ],
                 connectionEncryption: [
                     noise()
