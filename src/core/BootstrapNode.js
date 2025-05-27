@@ -102,31 +102,6 @@ export class BootstrapNode extends EventEmitter {
       await this.networkManager.start();
 
 
-      // Ottieni il PeerId corrente dal networkManager
-      const currentPeerId = this.networkManager.node.peerId;
-
-      // Salva le informazioni del nodo, incluso il PeerId completo
-      await this.storage.saveNodeInfo({
-        nodeId: this.nodeId,
-        p2pPort: this.config.p2p.port,
-        // apiPort: this.config.api.port,
-        type: 'bootstrap',
-        peerId: {
-          id: currentPeerId.toString(),
-          privKey: currentPeerId.privateKey
-            ? Buffer.from(currentPeerId.privateKey).toString('base64')
-            : null,
-          pubKey: currentPeerId.publicKey
-            ? Buffer.from(currentPeerId.publicKey).toString('base64')
-            : null
-        }
-      });
-
-      // Verifica il percorso di salvataggio effettivo
-      const storagePath = path.resolve(this.storage.storageDir);
-      this.logger.info(`PeerId salvato per futuri riavvii in: ${storagePath}`);
-      this.logger.info(`PeerId: ${currentPeerId.toString()}`);
-
       this.isRunning = true;
       this.logger.info('Nodo bootstrap avviato con successo');
 
