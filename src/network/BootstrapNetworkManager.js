@@ -376,11 +376,11 @@ export class NetworkManager extends EventEmitter {
                 services: {
                     identify: identify(),
                     dht: kadDHT({
-                        enabled: false,
+                        enabled: true, // <--- CHANGE THIS TO TRUE!
+                        clientMode: false,
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
                         kBucketSize: 20,
-                        clientMode: false,
                         allowQueryWithZeroPeers: true,
                         protocolPrefix: '/drakon/dht/1.0.0',
                     }),
@@ -399,7 +399,7 @@ export class NetworkManager extends EventEmitter {
 
             this.logger.info(`Listening on: ${this.node.getMultiaddrs().map(ma => ma.toString()).join(', ')}`);
 
-         
+
 
 
             this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
