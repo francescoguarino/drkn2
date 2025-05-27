@@ -42,7 +42,7 @@ export class NetworkManager extends EventEmitter {
         this.storage = new NodeStorage(config); // Richiede l'importazione di NodeStorage
         this.config = {
             port: 6001,
-            publicIp: process.env.PUBLIC_IP || "1.1.1.1",
+            publicIp: process.env.PUBLIC_IP || '127.0.0.1',
             bootstrapNodes: DEFAULTBOOTSTRAP_NODES,
             ...config
         }
@@ -268,10 +268,10 @@ export class NetworkManager extends EventEmitter {
 
 
             //ENV_IP
-            if (this.config.publicIp || !this.config.publicIp === "1.1.1.1") {
-            const publicMultiaddr = `/ip4/${this.config.publicIp}/tcp/${this.config.port}`;
+
+            const publicMultiaddr = `/ip4/${this.config.publicIp}/tcp/${this.config.port}`; // <--- Declare here
             this.logger.info(`Node will attempt to announce on: ${publicMultiaddr}`);
-            }
+
 
             this.node = await createLibp2p({
                 privateKey: libp2pCompatiblePrivateKey, // <--- Use the fully compatible PrivateKey object
@@ -280,7 +280,7 @@ export class NetworkManager extends EventEmitter {
                     announce: [publicMultiaddr]
                 },
                 transports: [
-                    tcp(),  
+                    tcp(),
                 ],
                 connectionEncryption: [
                     noise()
@@ -301,6 +301,7 @@ export class NetworkManager extends EventEmitter {
                         kBucketSize: 20,
                         allowQueryWithZeroPeers: true,
                         protocolPrefix: '/drakon/dht/1.0.0',
+                        randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 }
                     }),
                     ping: ping()
                 },
