@@ -1,21 +1,23 @@
 
 // PeerId
-import { createEd25519PeerId as createNewPeerId, createFromPrivKey } from '@libp2p/peer-id-factory'
+import { createEd25519PeerId as createNewPeerId, createFromPrivKey, createFromJSON } from '@libp2p/peer-id-factory'
 
 // Decodifica chiave privata
-import { unmarshalPrivateKey } from '@libp2p/crypto/keys'
+import { privateKeyFromProtobuf } from '@libp2p/crypto/keys'
 
 // Moduli libp2p
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
-import { noise } from '@libp2p/noise'
-import { mplex } from '@libp2p/mplex'
+import { noise } from '@chainsafe/libp2p-noise'
+import { yamux } from '@chainsafe/libp2p-yamux'
 import { bootstrap } from '@libp2p/bootstrap'
 import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
 //import { webSockets } from '@libp2p/websockets'
 import { multiaddr } from '@multiformats/multiaddr'
-import { kadDHT } from '@libp2p/kad-dht'
+import { kadDHT as KAD } from '@libp2p/kad-dht'
+import { identify } from '@libp2p/identify'
+import { ping } from '@libp2p/ping'
 
 
 
@@ -32,7 +34,7 @@ import { Logger } from '../utils/logger.js'
 import { NodeStorage } from '../utils/NodeStorage.js'
 
 
-const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz'];
+const DEFAULTBOOTSTRAP_NODES = ['/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPhNQhHy9DobLJd5SirFEQ6yp7HMeGJoGCwiTuWMt6ZJ5'];
 
 export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
@@ -41,6 +43,7 @@ export class NetworkManager extends EventEmitter {
         this.storage = new NodeStorage(config); // Richiede l'importazione di NodeStorage
         this.config = {
             port: 6001,
+            publicIp: process.env.PUBLIC_IP,
             bootstrapNodes: DEFAULTBOOTSTRAP_NODES,
             ...config
         }
@@ -53,7 +56,8 @@ export class NetworkManager extends EventEmitter {
     }
 
 
-    ma = multiaddr('/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPvDR3QboCJAZ2W1MyMCaVBnA73hKHQj22QudgJRzDRvz');
+    ma = multiaddr('/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPhNQhHy9DobLJd5SirFEQ6yp7HMeGJoGCwiTuWMt6ZJ5');
+
 
 
     /**
@@ -88,7 +92,7 @@ export class NetworkManager extends EventEmitter {
                             // this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
 
                             // Decodifica la chiave privata e crea il PeerId
-                            const privKey = await unmarshalPrivateKey(privKeyBuffer);
+                            const privKey = await privateKeyFromProtobuf(privKeyBuffer);
                             const peerId = await createFromPrivKey(privKey);
 
                             this.logger.info(`PeerId creato con successo: ${peerId.toString()}`);
@@ -134,27 +138,95 @@ export class NetworkManager extends EventEmitter {
         }
     }
 
+    async loadNode() {
+        try {
+            let nodeInfo = await this.storage.loadNodeInfo();
+            if (!nodeInfo) {
+                this.logger.warn('Nessuna informazione del nodo trovata, verrà creata una nuova istanza.');
+                return null; // Correct: Returns null if no node info
+            }
+
+            this.logger.info(`CARICATOOO`);
+
+            if (nodeInfo.peerId && typeof nodeInfo.peerId === 'object') {
+                this.logger.warn(`Dati PeerId caricati: id=${nodeInfo.peerId.id}, hasPrivKey=${!!nodeInfo.peerId.privKey}, hasPubKey=${!!nodeInfo.peerId.pubKey}`);
+
+                this.logger.warn(`Contenuto completo di nodeInfo.peerId: ${JSON.stringify(nodeInfo.peerId, null, 2)}`);
+
+                try {
+                    const recreatedPeerId = await createFromJSON(nodeInfo.peerId);
+                    this.logger.info(`PeerId ricreato con successo: ${recreatedPeerId.toString()}`);
+                    this.logger.warn(`PeerId ricreato - Type: ${recreatedPeerId.type}`);
+
+
+                    if (!recreatedPeerId || typeof recreatedPeerId.toString !== 'function') {
+                        throw new Error('PeerId non valido!');
+                    }
+                    this.logger.warn(`Tipo effettivo: ${recreatedPeerId.constructor.name}`);
+
+
+                    if (recreatedPeerId.privateKey) {
+                        this.logger.warn('PeerId ricreato con chiave privata.');
+                    }
+                    if (recreatedPeerId.publicKey) {
+                        this.logger.warn('PeerId ricreato con chiave pubblica.');
+                    }
+                    return recreatedPeerId; // Correct: Returns the PeerId instance
+                } catch (peerIdError) {
+                    this.logger.warn(`Errore nella ricreazione del PeerId da JSON: ${peerIdError.message}`);
+                    this.logger.error(peerIdError.stack);
+                    return null; // Correct: Returns null on PeerId recreation error
+                }
+            } else {
+                this.logger.warn('Oggetto peerId non trovato o non valido nel file JSON.');
+                return null; // *** IMPORTANT FIX: Return null here if peerId is invalid ***
+            }
+        } catch (error) {
+            this.logger.error(`Errore nel caricamento delle informazioni del nodo: ${error.message}`);
+            this.logger.error(error.stack);
+            return null; // Correct: Returns null on general error
+        }
+    }
+
+    async stop() {
+        try {
+            this.logger.info('Arresto del NetworkManager...');
+            await this.node.stop();
+            this, this.peers.clear();
+            this.stats = {
+                peers: 0,
+                messageSent: 0,
+                messageReceived: 0,
+                enrollmentChannel: "auto",
+
+            }
+            this.logger.info('NetworkManager arrestato con successo');
+        } catch (error) {
+            this.logger.error('Errore durante l\'arresto del NetworkManager:', error);
+            throw error;
+        }
+    }
 
     setupHandlers() {
 
 
         // Gestione eventi per la connessione a un peer:
         this.node.addEventListener('peer:discovery', async evt => {
-            const peerIdStr = evt.detail.id.toString()
-            const addrs = evt.detail.multiaddrs  // ← array di Multiaddr
+            const peerIdStr = evt.detail.id.toString(); // Get the PeerId string
+            const addrs = evt.detail.multiaddrs; // Get the Multiaddrs array
 
-            for (const ma of addrs) {
-                this.logger.info(`Scoperto peer ${peerIdStr} su ${ma.toString()}: provo a connettermi…`)
-                try {
-                    // <-- dial con Multiaddr valido
-                    await this.node.dial(ma)
-                    this.logger.info(`Dial riuscito su ${ma.toString()}`)
-                    break
-                } catch (err) {
-                    this.logger.warn(`Dial fallito su ${ma.toString()}: ${err.message}`)
-                }
+            this.logger.info(`Scoperto peer: ${peerIdStr}`);
+            if (addrs && addrs.length > 0) {
+                this.logger.info(`  Indirizzi: ${addrs.map(ma => ma.toString()).join(', ')}`);
+            } else {
+                this.logger.info(`  Nessun indirizzo trovato per questo peer.`);
             }
-        })
+
+            // Optional: Log if this is your bootstrap node
+            if (peerIdStr === '12D3KooWPhNQhHy9DobLJd5SirFEQ6yp7HMeGJoGCwiTuWMt6ZJ5') { // Replace with your actual bootstrap PeerId
+                this.logger.info('*** Scoperto il nodo bootstrap! ***');
+            }
+        });
 
 
         this.node.addEventListener('peer:connect', async evt => {
@@ -211,75 +283,63 @@ export class NetworkManager extends EventEmitter {
 
     }
 
-    async stop() {
-        try {
-            this.logger.info('Arresto del NetworkManager...');
-            await this.node.stop();
-            this, this.peers.clear();
-            this.stats = {
-                peers: 0,
-                messageSent: 0,
-                messageReceived: 0,
-                enrollmentChannel: "auto",
-
-            }
-            this.logger.info('NetworkManager arrestato con successo');
-        } catch (error) {
-            this.logger.error('Errore durante l\'arresto del NetworkManager:', error);
-            throw error;
-        }
-    }
 
     async start() {
         try {
             this.logger.info('AVVIO DEL NETWORK MANAGER LIGHT...');
 
-            let nodeInfo = await this.storage.loadNodeInfo();
+            let loadedPeerId = await this.loadNode();
 
-            if (nodeInfo && nodeInfo.nodeId) {
-                this.logger.info(`Caricate informazioni del nodo esistenti.....`);
-                this.nodeId = nodeInfo.nodeId;
-
-
-                if (nodeInfo.peerId) {
-                    this.logger.info('PeerId trovato nelle informazioni salvate');
-                    this.peerId = await this.loadOrCreatePeerId();
-
-                }
+            if (loadedPeerId && loadedPeerId.privateKey) {
+                this.peerId = loadedPeerId;
+                this.logger.debug(`0K-PeerId passato allo start${this.peerId.toString()}`);
             } else {
-                this.logger.info('Nessuna informazione di storage trovata');
-                this.peerId = await this.loadOrCreatePeerId();
+                this.logger.warn('Nessun PeerId esistente trovato o ricreato con chiave privata. Creazione di un nuovo PeerId...');
+                this.peerId = await createNewPeerId();
+                this.nodeId = this.peerId.toString();
+                this.logger.info(`Creato nuovo PeerId: ${this.peerId.toString()} e nodeId: ${this.nodeId}`);
             }
 
-            this.logger.warn(JSON.stringify({
-                ID: this.peerId.toString(),
-                TYPE: this.peerId.type,
-                PRIV: this.peerId.privateKey ? Buffer.from(this.peerId.privateKey).toString('base64') : 'non disponibile',
-                PUB: this.peerId.publicKey ? Buffer.from(this.peerId.publicKey).toString('base64') : 'non disponibile',
-            }, null, 2));
+            console.dir(this.peerId, { depth: 4 })
+            this.logger.warn(`– privateKey? ${this.peerId.privateKey?.length} bytes`)
+            this.logger.warn(`– publicKey?  ${this.peerId.publicKey?.length} bytes`)
+            this.logger.warn(`– type:      ${this.peerId.type}`)
+
+
+            let libp2pCompatiblePrivateKey;
+            if (this.peerId.privateKey instanceof Uint8Array) {
+
+                libp2pCompatiblePrivateKey = await privateKeyFromProtobuf(this.peerId.privateKey);
+            } else {
+                libp2pCompatiblePrivateKey = this.peerId.privateKey;
+            }
 
 
 
+            this.logger.info(`Type of libp2pCompatiblePrivateKey: ${typeof libp2pCompatiblePrivateKey}`);
+            if (libp2pCompatiblePrivateKey && typeof libp2pCompatiblePrivateKey === 'object') {
+                this.logger.info(`Is libp2pCompatiblePrivateKey a PrivateKey instance? ${libp2pCompatiblePrivateKey.constructor.name}`);
+            }
 
-
-
-
+            const publicMultiaddr = `/ip4/${this.config.publicIp}/tcp/${this.config.port}`;
+            this.logger.info(`Node will attempt to announce on: ${publicMultiaddr}`);
 
             this.node = await createLibp2p({
-                peerId: this.peerId,
+                privateKey: libp2pCompatiblePrivateKey, // <--- Use the fully compatible PrivateKey object
                 addresses: {
-                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`]
+                    listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
+                    //announce: [publicMultiaddr]
                 },
                 transports: [
                     tcp(),
                     // webSockets(), da implementare
                     // webRTC(), da implementare 
                 ],
-                connectionEncryption: [
+                connectionEncrypters: [
                     noise()
                 ],
                 streamMuxers: [
-                    mplex()
+                    yamux()
                 ],
                 peerDiscovery: [
                     bootstrap({
@@ -292,8 +352,9 @@ export class NetworkManager extends EventEmitter {
                     HelloProtocol()
                 ],
                 services: {
-                    dht: kadDHT({
-                        clientMode: false,
+                    identify: identify(),
+                    dht: KAD({
+                        clientMode: true,
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
                         // Abilita esplicitamente la modalità server DHT
@@ -301,25 +362,20 @@ export class NetworkManager extends EventEmitter {
                         randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 },
                         protocolPrefix: '/drakon/dht/1.0.0',
                         allowQueryWithZeroPeers: true,
-                    })
+                    }),
+                    ping: ping()
                 }
 
             })
 
             this.setupHandlers();
+
             await this.node.start();
-            this.setupDHTMonitoring()
-            await this.node.services.dht.start()
 
-
-            setTimeout(() => {
-                this.logger.info('Connessione ai peer della routing table...');
-                this.connectToRoutingTablePeers();
-            }, 60000);
-
-
-
-            // Esegui una query di esempio per popolare la DHT
+            this.logger.info("==============================================================");
+            this.logger.info(`Listening on: ${this.node.getMultiaddrs().map(ma => ma.toString()).join(', ')}`);
+            this.logger.info(`NetworkManager avviato con PeerId: ${this.node.peerId.toString()}`);
+            this.logger.info("==============================================================");
 
 
 
@@ -334,6 +390,10 @@ export class NetworkManager extends EventEmitter {
 
 
     }
+
+
+
+
 
 
     setupDHTMonitoring() {
