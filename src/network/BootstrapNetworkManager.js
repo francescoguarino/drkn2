@@ -289,7 +289,6 @@ export class NetworkManager extends EventEmitter {
                     HelloProtocol(),
                 ],
                 services: {
-                    identify: identify(),
                     dht: kadDHT({
                         enabled: true, 
                         clientMode: false,
@@ -301,7 +300,7 @@ export class NetworkManager extends EventEmitter {
                         randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 }
                     }),
                     ping: ping(),
-                    
+                    identify: identify(),
                 },
                 connectionManager: {
                     minConnections: 0,

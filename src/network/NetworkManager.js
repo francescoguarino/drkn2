@@ -275,7 +275,6 @@ export class NetworkManager extends EventEmitter {
                     HelloProtocol()
                 ],
                 services: {
-                    identify: identify(),
                     dht: KAD({
                         clientMode: true,
                         maxInboundStreams: 32,
@@ -285,7 +284,8 @@ export class NetworkManager extends EventEmitter {
                         protocol: '/drakon/dht/1.0.0',
                         allowQueryWithZeroPeers: true,
                     }),
-                    ping: ping()
+                    ping: ping(),
+                    identify: identify(),
                 }
 
             })
