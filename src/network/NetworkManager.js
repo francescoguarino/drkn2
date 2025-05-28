@@ -281,7 +281,6 @@ export class NetworkManager extends EventEmitter {
                         maxOutboundStreams: 64,
                         kBucketSize: 20,
                         randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 },
-                        protocol: '/drakon/dht/1.0.0',
                         allowQueryWithZeroPeers: true,
                     }),
                     ping: ping(),

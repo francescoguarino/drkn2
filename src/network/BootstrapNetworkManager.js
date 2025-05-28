@@ -10,7 +10,7 @@ import { privateKeyFromProtobuf } from '@libp2p/crypto/keys'
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
 import { noise } from '@chainsafe/libp2p-noise'
-import { identify } from '@libp2p/identify'
+import { identify, identifyPush } from '@libp2p/identify'
 import { yamux } from '@chainsafe/libp2p-yamux'
 import { pipe } from 'it-pipe'
 //import { webRTC } from '@libp2p/webrtc'
@@ -296,11 +296,11 @@ export class NetworkManager extends EventEmitter {
                         maxOutboundStreams: 64,
                         kBucketSize: 20,
                         allowQueryWithZeroPeers: true,
-                        protocol: '/drakon/dht/1.0.0',
                         randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 }
                     }),
                     ping: ping(),
-                    identify: identify(),
+                    identify: identify()
+
                 },
                 connectionManager: {
                     minConnections: 0,
