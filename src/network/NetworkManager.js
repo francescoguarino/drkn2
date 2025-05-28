@@ -40,7 +40,7 @@ export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
         super(),
             this.logger = new Logger('Manager-Network-Light');
-        this.storage = new NodeStorage(config); // Richiede l'importazione di NodeStorage
+        this.storage = new NodeStorage(config); 
         this.config = {
             port: 6001,
             publicIp: process.env.PUBLIC_IP,
@@ -59,91 +59,12 @@ export class NetworkManager extends EventEmitter {
     ma = multiaddr('/ip4/34.147.53.15/tcp/6001/p2p/12D3KooWPhNQhHy9DobLJd5SirFEQ6yp7HMeGJoGCwiTuWMt6ZJ5');
 
 
-
-    /**
-     * Carica un PeerId esistente o ne crea uno nuovo
-     * @returns {Promise<PeerId>} - Oggetto PeerId
-     */
-    async loadOrCreatePeerId() {
-        try {
-            // Carica le informazioni esistenti
-            const nodeInfo = await this.storage.loadNodeInfo();
-            // this.logger.info('Informazioni nodo caricate: ' + JSON.stringify({
-            //     hasNodeInfo: !!nodeInfo,
-            //     nodeId: nodeInfo?.nodeId || 'non presente',
-            //     hasPeerId: !!nodeInfo?.peerId,
-            //     peerIdType: nodeInfo?.peerId ? typeof nodeInfo.peerId : 'non presente'
-            // }));
-
-            // Se abbiamo informazioni salvate con un PeerId, proviamo a usarle
-            if (nodeInfo && nodeInfo.peerId) {
-                this.logger.info('Trovato PeerId salvato, tentativo di riutilizzo...');
-
-                try {
-                    // Verifichiamo che abbiamo la chiave privata
-                    if (typeof nodeInfo.peerId === 'object' && nodeInfo.peerId.privKey) {
-                        //  this.logger.info('Chiavi private trovate, tentativo di ricostruzione PeerId...');
-
-                        try {
-                            // Converti la chiave da base64 a buffer
-                            const privKeyStr = nodeInfo.peerId.privKey;
-                            const privKeyBuffer = Buffer.from(privKeyStr, 'base64');
-
-                            // this.logger.info(`Chiave privata: ${privKeyBuffer.length} bytes (in base64: ${privKeyStr.substring(0, 10)}...)`);
-
-                            // Decodifica la chiave privata e crea il PeerId
-                            const privKey = await privateKeyFromProtobuf(privKeyBuffer);
-                            const peerId = await createFromPrivKey(privKey);
-
-                            this.logger.info(`PeerId creato con successo: ${peerId.toString()}`);
-
-                            // Verifica corrispondenza con l'ID salvato
-                            if (peerId.toString() !== nodeInfo.peerId.id) {
-                                this.logger.warn(`⚠️ Il PeerId generato (${peerId.toString()}) non corrisponde all'ID salvato (${nodeInfo.peerId.id})`);
-                                this.logger.warn('Questo potrebbe essere causato da cambiamenti nelle librerie libp2p. Utilizzerò comunque il nuovo PeerId generato.');
-                                // Aggiorna l'ID nel nodeInfo per i futuri caricamenti
-                                nodeInfo.peerId.id = peerId.toString();
-                                await this.storage.saveNodeInfo(nodeInfo);
-                                this.logger.info(`Informazioni nodo aggiornate con il nuovo PeerId: ${peerId.toString()}`);
-                            }
-
-                            return peerId;
-                        } catch (importError) {
-                            this.logger.error(`Errore importazione chiave: ${importError.message}`);
-                            throw importError;
-                        }
-                    } else if (typeof nodeInfo.peerId === 'string') {
-                        // Qui abbiamo solo l'ID come stringa, senza chiavi
-                        this.logger.warn('Solo ID PeerId trovato senza chiavi private, impossibile riutilizzare lo stesso PeerId');
-                        throw new Error('PeerId senza chiavi private non utilizzabile');
-                    } else {
-                        this.logger.warn('Formato PeerId salvato non riconoscibile');
-                        throw new Error('Formato PeerId non valido');
-                    }
-                } catch (error) {
-                    this.logger.error(`Errore nel caricamento del PeerId: ${error.message}`);
-                    this.logger.info('Sarà generato un nuovo PeerId');
-                    // Fallback a creazione nuovo PeerId
-                    return await createNewPeerId();
-                }
-            } else {
-                // Nessun PeerId trovato, ne creiamo uno nuovo
-                this.logger.info('Nessun PeerId trovato, creazione nuovo PeerId');
-                return await createNewPeerId();
-            }
-        } catch (error) {
-            this.logger.error(`Errore generale in loadOrCreatePeerId: ${error.message}`);
-            // Fallback finale: crea un nuovo PeerId
-            return await createNewPeerId();
-        }
-    }
-
     async loadNode() {
         try {
             let nodeInfo = await this.storage.loadNodeInfo();
             if (!nodeInfo) {
                 this.logger.warn('Nessuna informazione del nodo trovata, verrà creata una nuova istanza.');
-                return null; // Correct: Returns null if no node info
+                return null; //Returns null if no node info
             }
 
             this.logger.info(`CARICATOOO`);
@@ -171,20 +92,20 @@ export class NetworkManager extends EventEmitter {
                     if (recreatedPeerId.publicKey) {
                         this.logger.warn('PeerId ricreato con chiave pubblica.');
                     }
-                    return recreatedPeerId; // Correct: Returns the PeerId instance
+                    return recreatedPeerId; //Returns the PeerId instance
                 } catch (peerIdError) {
                     this.logger.warn(`Errore nella ricreazione del PeerId da JSON: ${peerIdError.message}`);
                     this.logger.error(peerIdError.stack);
-                    return null; // Correct: Returns null on PeerId recreation error
+                    return null; //Returns null on PeerId recreation error
                 }
             } else {
                 this.logger.warn('Oggetto peerId non trovato o non valido nel file JSON.');
-                return null; // *** IMPORTANT FIX: Return null here if peerId is invalid ***
+                return null; // Return null here if peerId is invalid ***
             }
         } catch (error) {
             this.logger.error(`Errore nel caricamento delle informazioni del nodo: ${error.message}`);
             this.logger.error(error.stack);
-            return null; // Correct: Returns null on general error
+            return null; // Returns null on general error
         }
     }
 
@@ -314,6 +235,8 @@ export class NetworkManager extends EventEmitter {
                 libp2pCompatiblePrivateKey = this.peerId.privateKey;
             }
 
+                            //SAVE NODE INFO /TODO/
+
 
 
             this.logger.info(`Type of libp2pCompatiblePrivateKey: ${typeof libp2pCompatiblePrivateKey}`);
@@ -325,7 +248,7 @@ export class NetworkManager extends EventEmitter {
             this.logger.info(`Node will attempt to announce on: ${publicMultiaddr}`);
 
             this.node = await createLibp2p({
-                privateKey: libp2pCompatiblePrivateKey, // <--- Use the fully compatible PrivateKey object
+                privateKey: libp2pCompatiblePrivateKey, 
                 addresses: {
                     listen: [`/ip4/0.0.0.0/tcp/${this.config.port}`],
                     //announce: [publicMultiaddr]
@@ -357,10 +280,9 @@ export class NetworkManager extends EventEmitter {
                         clientMode: true,
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
-                        // Abilita esplicitamente la modalità server DHT
                         kBucketSize: 20,
                         randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 },
-                        protocolPrefix: '/drakon/dht/1.0.0',
+                        protocol: '/drakon/dht/1.0.0',
                         allowQueryWithZeroPeers: true,
                     }),
                     ping: ping()

@@ -1,12 +1,10 @@
 
 // PeerId
 import { createEd25519PeerId as createNewPeerId, createFromJSON } from '@libp2p/peer-id-factory'
-/* import type { PrivateKey } from '@libp2p/interface' */ // Removed: Type-only import not allowed in JS
 
 // Decodifica chiave privata
 import { privateKeyFromProtobuf } from '@libp2p/crypto/keys'
 
-//import { peerIdFromString } from '@libp2p/peer-id'
 
 // Moduli libp2p
 import { createLibp2p } from 'libp2p'
@@ -38,7 +36,7 @@ export class NetworkManager extends EventEmitter {
     constructor(config = {}) {
         super(),
             this.logger = new Logger('Manager-Network-Light');
-        this.storage = new NodeStorage(config); // Richiede l'importazione di NodeStorage
+        this.storage = new NodeStorage(config); 
         this.config = {
             port: 6001,
             publicIp: process.env.PUBLIC_IP || '127.0.0.1',
@@ -58,7 +56,7 @@ export class NetworkManager extends EventEmitter {
             let nodeInfo = await this.storage.loadNodeInfo();
             if (!nodeInfo) {
                 this.logger.warn('Nessuna informazione del nodo trovata, verrà creata una nuova istanza.');
-                return null; // Correct: Returns null if no node info
+                return null; // Returns null if no node info
             }
 
             this.logger.info(`CARICATOOO`);
@@ -86,26 +84,26 @@ export class NetworkManager extends EventEmitter {
                     if (recreatedPeerId.publicKey) {
                         this.logger.warn('PeerId ricreato con chiave pubblica.');
                     }
-                    return recreatedPeerId; // Correct: Returns the PeerId instance
+                    return recreatedPeerId; //  Returns the PeerId instance
                 } catch (peerIdError) {
                     this.logger.warn(`Errore nella ricreazione del PeerId da JSON: ${peerIdError.message}`);
                     this.logger.error(peerIdError.stack);
-                    return null; // Correct: Returns null on PeerId recreation error
+                    return null; //  Returns null on PeerId recreation error
                 }
             } else {
                 this.logger.warn('Oggetto peerId non trovato o non valido nel file JSON.');
-                return null; // *** IMPORTANT FIX: Return null here if peerId is invalid ***
+                return null; //  Return null here if peerId is invalid ***
             }
         } catch (error) {
             this.logger.error(`Errore nel caricamento delle informazioni del nodo: ${error.message}`);
             this.logger.error(error.stack);
-            return null; // Correct: Returns null on general error
+            return null; //  Returns null on general error
         }
     }
 
 
     setupHandlers() {
-        // Peer discovery
+        
         this.node.addEventListener('peer:discovery', (evt) => {
             // const peer = evt.detail.id.toString();
             // if (!this.peers.has(peer)) {
@@ -263,12 +261,12 @@ export class NetworkManager extends EventEmitter {
                 libp2pCompatiblePrivateKey = this.peerId.privateKey;
             }
 
-
+            //SAVE NODE INFO /TODO/
 
 
             //ENV_IP
 
-            const publicMultiaddr = `/ip4/${this.config.publicIp}/tcp/${this.config.port}`; // <--- Declare here
+            const publicMultiaddr = `/ip4/${this.config.publicIp}/tcp/${this.config.port}`;
             this.logger.info(`Node will attempt to announce on: ${publicMultiaddr}`);
 
 
@@ -293,16 +291,17 @@ export class NetworkManager extends EventEmitter {
                 services: {
                     identify: identify(),
                     dht: kadDHT({
-                        enabled: true, // <--- CHANGE THIS TO TRUE!
+                        enabled: true, 
                         clientMode: false,
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
                         kBucketSize: 20,
                         allowQueryWithZeroPeers: true,
-                        protocolPrefix: '/drakon/dht/1.0.0',
+                        protocol: '/drakon/dht/1.0.0',
                         randomWalk: { enabled: true, interval: 30_000, timeout: 10_000 }
                     }),
-                    ping: ping()
+                    ping: ping(),
+                    
                 },
                 connectionManager: {
                     minConnections: 0,
@@ -387,22 +386,3 @@ export class NetworkManager extends EventEmitter {
 
 
 
-
-
-
-
-
-
-
-
-
-
-// await this.storage.saveNodeInfo({
-//     nodeId: this.nodeId,
-//     peerId: {
-//         id: this.peerId.toString(),
-//         // Ensure these exist if you're using them later:
-//         privKey: this.peerId.privateKey ? Buffer.from(this.peerId.privateKey).toString('base64') : undefined,
-//         pubKey: this.peerId.publicKey ? Buffer.from(this.peerId.publicKey).toString('base64') : undefined
-//     }
-// });
