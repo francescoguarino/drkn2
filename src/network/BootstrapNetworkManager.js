@@ -166,30 +166,7 @@ export class NetworkManager extends EventEmitter {
                 this.stats.messageSent++
             }
 
-            try {
-
-
-                try {
-                    await this.node.services.dht.routingTable.add(peerIdObj)
-                    this.logger.info(`✅ Peer ${peerId} aggiunto alla routing table`)
-                } catch (err) {
-                    this.logger.error(`❌ Impossibile aggiungere ${peerId} alla routing table: ${err.message}`)
-                }
-
-
-                //                try {
-                //                    await this.node.services.dht.findPeer(peerId)
-                //                  this.logger.info(`findPeer(${peerId}) completato`)
-                //             } catch (err) {
-                //               this.logger.error(`❌ Impossibile aggiungere ....findPeer....(${peerId}) fallito: ${err.message}`)
-                //         }
-
-
-                // Vedi subito lo stato
-                this.logRoutingTableStatus()
-            } catch (err) {
-                this.logger.error(`Errore aggiungendo ${peerId} alla DHT: ${err.message}`)
-            }
+       
         })
 
 
@@ -291,6 +268,7 @@ export class NetworkManager extends EventEmitter {
                 services: {
                     dht: kadDHT({
                         enabled: true, 
+                        protocol: '/ipfs/kad/1.0.0',
                         clientMode: false,
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
@@ -326,55 +304,6 @@ export class NetworkManager extends EventEmitter {
         }
     }
 
-
-    setupDHTMonitoring() {
-        const dht = this.node.services.dht
-        const rt = dht.routingTable
-
-        if (!rt) {
-            this.logger.error('Routing table non disponibile')
-            return
-        }
-
-        // Log iniziale dello stato
-        this.logRoutingTableStatus()
-
-        // Gestione eventi della routing table
-        rt.addEventListener('peer:added', (evt) => {
-            const peerId = evt.detail.toString()
-            this.logger.info(`📥 Peer aggiunto alla routing table: ${peerId}`)
-            this.logRoutingTableStatus()
-
-            // Verifica connessione attiva
-            this.node.getConnections(peerId).then(connections => {
-                if (connections.length === 0) {
-                    this.logger.warn(`Peer ${peerId} in routing table ma nessuna connessione attiva`)
-                }
-            })
-        })
-
-        rt.addEventListener('peer:removed', (evt) => {
-            const peerId = evt.detail.toString()
-            this.logger.info(`📤 Peer rimosso dalla routing table: ${peerId}`)
-            this.logRoutingTableStatus()
-        })
-
-        // Monitoraggio periodico
-        this.dhtInterval = setInterval(() => {
-            this.logRoutingTableStatus()
-        }, 6000)
-    }
-
-    logRoutingTableStatus() {
-        const rt = this.node.services.dht.routingTable;
-        if (!rt) {
-            this.logger.warn('Routing table non disponibile');
-            return;
-        }
-        const totalPeers = rt.size;
-        this.logger.info(`Stato DHT: ${totalPeers} peer in routing table`);
-
-    }
 
 
 }

@@ -277,6 +277,7 @@ export class NetworkManager extends EventEmitter {
                 services: {
                     dht: KAD({
                         clientMode: true,
+                        protocol: '/ipfs/kad/1.0.0',
                         maxInboundStreams: 32,
                         maxOutboundStreams: 64,
                         kBucketSize: 20,
@@ -312,130 +313,6 @@ export class NetworkManager extends EventEmitter {
 
     }
 
-
-
-
-
-
-    setupDHTMonitoring() {
-        const rt = this.node.services.dht.routingTable;
-
-
-        if (!rt) {
-            this.logger.error('Routing table non disponibile')
-            return
-        }
-
-        // Log iniziale dello stato
-        this.logRoutingTableStatus()
-
-        // Gestione eventi della routing table
-        rt.addEventListener('peer:added', (evt) => {
-            const peerId = evt.detail.toString()
-            this.logger.info(`📥 Peer aggiunto alla routing table: ${peerId}`)
-            this.logRoutingTableStatus()
-
-            // Verifica connessione attiva
-            this.node.getConnections(peerId).then(connections => {
-                if (connections.length === 0) {
-                    this.logger.warn(`Peer ${peerId} in routing table ma nessuna connessione attiva`)
-                }
-            })
-        })
-
-        rt.addEventListener('peer:removed', (evt) => {
-            const peerId = evt.detail.toString()
-            this.logger.info(`📤 Peer rimosso dalla routing table: ${peerId}`)
-            this.logRoutingTableStatus()
-        })
-
-        // Monitoraggio periodico
-        this.dhtInterval = setInterval(() => {
-            this.logRoutingTableStatus()
-        }, 6000)
-    }
-
-    async logRoutingTableStatus() {
-        const dht = this.node.services.dht
-        if (!dht) {
-            this.logger.warn("⚠️ DHT non disponibile.")
-            return
-        }
-
-        try {
-            const peers = []
-            for await (const peerId of dht.getClosestPeers(this.node.peerId.toBytes())) {
-                peers.push(peerId)
-            }
-
-            this.logger.info(`📡 Routing Table - Peers conosciuti: ${peers.length}`)
-            peers.forEach((peerId, index) => {
-                this.logger.info(`  [${index + 1}] PeerId: ${peerId.toString()}`)
-            })
-        } catch (error) {
-            this.logger.error(`Errore durante l'accesso alla routing table: ${error.message}`)
-        }
-
-
-    }
-
-
-    async connectToRoutingTablePeers() {
-        const dht = this.node.services.dht;
-        if (!dht) {
-            this.logger.warn("⚠️ DHT non disponibile.");
-            return;
-        }
-
-        const routingTable = dht.routingTable;
-        if (!routingTable) {
-            this.logger.warn("⚠️ Routing table non disponibile.");
-            return;
-        }
-
-        const peerIds = dht.getClosestPeers(this.node.peerId.toBytes());
-
-        for await (const peerId of peerIds) {
-            const peerIdStr = peerId.toString();
-            try {
-                const peerInfo = await this.node.peerStore.get(peerId);
-                if (peerInfo.addresses.length === 0) {
-                    this.logger.warn(`⚠️ Nessun indirizzo disponibile per ${peerIdStr} nel peerStore.`);
-                    // Tentativo di recuperare gli indirizzi tramite la DHT
-                    try {
-                        const foundPeer = await dht.findPeer(peerId);
-                        if (foundPeer && foundPeer.multiaddrs.length > 0) {
-                            for (const addr of foundPeer.multiaddrs) {
-                                try {
-                                    await this.node.dial(addr);
-                                    this.logger.info(`✅ Connesso a ${peerIdStr} su ${addr.toString()}`);
-                                    break;
-                                } catch (err) {
-                                    this.logger.warn(`❌ Impossibile connettersi a ${peerIdStr} su ${addr.toString()}: ${err.message}`);
-                                }
-                            }
-                        } else {
-                            this.logger.warn(`⚠️ Nessun indirizzo trovato per ${peerIdStr} tramite la DHT.`);
-                        }
-                    } catch (err) {
-                        this.logger.warn(`⚠️ Errore durante la ricerca di ${peerIdStr} nella DHT: ${err.message}`);
-                    }
-                } else {
-                    for (const addr of peerInfo.addresses) {
-                        try {
-                            await this.node.dial(addr.multiaddr);
-                            this.logger.info(`✅ Connesso a ${peerIdStr} su ${addr.multiaddr.toString()}`);
-                            break;
-                        } catch (err) {
-                            this.logger.warn(`❌ Impossibile connettersi a ${peerIdStr} su ${addr.multiaddr.toString()}: ${err.message}`);
-                        }
-                    }
-                }
-            } catch (err) {
-                this.logger.warn(`⚠️ Informazioni sugli indirizzi non disponibili per ${peerIdStr}: ${err.message}`);
-            }
-        }
-    }
 
 
 
